@@ -47,7 +47,8 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "cl.logisticaverde.app"
+        // Identificador público (Play Store / teléfono). El paquete del código (namespace) sigue siendo cl.logisticaverde.app
+        applicationId = "dejatuplayalimpia.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono adaptativo: el logo (108 dp de lienzo) queda en la zona segura central de ~68 dp,
+     así ninguna forma de ícono del fabricante lo recorta. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo_app"
+    android:inset="20dp" />

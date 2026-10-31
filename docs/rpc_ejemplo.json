@@ -1,0 +1,41 @@
+{
+  "p": {
+    "jornada": {
+      "id_registro": "REG-20261030-TEST01",
+      "fecha_jornada": "2026-10-30",
+      "brigada": "Brigada A",
+      "id_playa": "PLAYA-01",
+      "sectores_ids": ["SECTOR-01", "SECTOR-02"],
+      "sin_herramientas": false,
+      "hora_inicio_ms": 1793365200000,
+      "hora_fin_ms": 1793376000000,
+      "latitud_inicial": -33.5394,
+      "longitud_inicial": -71.6083,
+      "km_recorridos": 1.8,
+      "url_foto_inicio": null,
+      "url_foto_limpio": null,
+      "url_foto_sacos": null,
+      "motivo_omision_inicio": "Prueba sin cámara",
+      "motivo_omision_limpio": "Prueba sin cámara",
+      "motivo_omision_sacos": "Prueba sin cámara",
+      "cantidad_sacos": 3,
+      "kg_basura_normal": 30.5,
+      "kg_basura_reciclable": 12.0,
+      "encargado_pesaje": "Rosa Acopio",
+      "destino_basura_normal": "Entregado a camión DIMAO",
+      "nro_guia_despacho": "GD-0001",
+      "destino_basura_reciclable": "Entregado a Punto Limpio Municipal"
+    },
+    "participantes": [
+      { "nombre": "Ana Prueba", "rol": "LIDER" },
+      { "nombre": "Luis Prueba", "rol": "VOLUNTARIO" }
+    ],
+    "herramientas": [
+      { "qr_codigo": "INV-02-PINZA-01", "estado_final": "Dañado" }
+    ],
+    "basura": [
+      { "id_tipo_basura": "COLILLAS", "cantidad": 412 },
+      { "id_tipo_basura": "BOTELLAS_PET", "cantidad": 37 }
+    ]
+  }
+}

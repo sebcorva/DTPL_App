@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <files-path
+        name="evidencias_fotos"
+        path="evidencias/" />
+    <cache-path
+        name="cache_fotos"
+        path="evidencias_temp/" />
+    <!-- ISSUE-26: solo la imagen del resumen de impacto que se comparte -->
+    <cache-path
+        name="compartir"
+        path="compartir/" />
+</paths>

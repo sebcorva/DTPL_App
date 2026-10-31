@@ -1,0 +1,13 @@
+# Copia este archivo como local.properties y completa los valores.
+# local.properties está en .gitignore: nunca se sube a Git.
+
+# Ruta del Android SDK (Android Studio la completa sola)
+sdk.dir=/Users/<usuario>/Library/Android/sdk
+
+# Supabase: Project Settings → API. Usar SOLO la clave publicable (sb_publishable_…).
+# La clave secreta (sb_secret_…) jamás va en la app: solo en las Script Properties de Google Sheets.
+SUPABASE_URL=https://<tu-proyecto>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+
+# Opcional (no implementado por ahora): compartir directo a Historias de Instagram
+META_APP_ID=

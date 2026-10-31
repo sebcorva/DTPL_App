@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Deja tu Playa Limpia</string>
+    <string name="main_header_title">Deja tu Playa Limpia</string>
+    <string name="btn_start_shift">Iniciar Jornada</string>
+    <string name="btn_resume_shift">Reanudar Jornada</string>
+    <string name="btn_sync">Sincronizar</string>
+    <string name="btn_next">Siguiente</string>
+    <string name="btn_save">Guardar</string>
+
+    <!-- Pantalla 10: Resumen de Impacto. Hashtag y @cuenta son TEXTOS DE PRUEBA hasta que la clienta los entregue -->
+    <string name="resumen_titulo_tarjeta">Deja tu Playa Limpia</string>
+    <string name="resumen_kg_recolectados">de residuos recolectados</string>
+    <string name="resumen_reciclable">reciclable</string>
+    <string name="resumen_personas">personas</string>
+    <string name="resumen_m2">limpiados</string>
+    <string name="resumen_km">recorridos</string>
+    <string name="resumen_duracion">de jornada</string>
+    <string name="resumen_top_residuos">Lo que más encontramos</string>
+    <string name="resumen_hashtag">#DejaTuPlayaLimpia</string>
+    <string name="resumen_cuenta">@logisticaverde</string>
+</resources>

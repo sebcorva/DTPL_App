@@ -1,0 +1,43 @@
+# ── Secretos y configuración local (NUNCA subir a Git) ──────────────────────
+# local.properties: sdk.dir + SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY (+ META_APP_ID)
+# Usar local.properties.example como plantilla.
+local.properties
+.env
+.env.*
+!.env.example
+
+# Firma del APK release (ISSUE-28): keystore y sus contraseñas
+*.jks
+*.keystore
+*.p12
+keystore.properties
+signing.properties
+
+# Servicios de Google / Apps Script
+google-services.json
+.clasp.json
+.clasprc.json
+
+# ── Android Studio / Gradle / Kotlin ────────────────────────────────────────
+*.iml
+.gradle/
+.kotlin/
+.idea/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.hprof
+
+# Artefactos compilados
+*.apk
+*.aab
+*.ap_
+*.dex
+app/release/
+app/debug/
+output-metadata.json
+
+# ── Sistema operativo ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

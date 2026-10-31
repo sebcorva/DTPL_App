@@ -2,15 +2,21 @@ package cl.logisticaverde.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Paleta Ecológica Costera ("Deja tu Playa Limpia")
-val EmeraldGreenPrimary = Color(0xFF047857)
-val EmeraldGreenDark = Color(0xFF065F46)
-val EmeraldGreenLight = Color(0xFFD1FAE5)
-val OceanTealSecondary = Color(0xFF0F766E)
-val SandBackground = Color(0xFFF8FAFC)
-val SurfaceCardWhite = Color(0xFFFFFFFF)
+// Paleta "Deja tu Playa Limpia" (diseño P1, 31-10-2026). Solo modo claro.
+val VerdeAccion = Color(0xFF2EAE7A)        // Botón principal "Iniciar jornada"
+val VerdeAccionOscuro = Color(0xFF1F8A5F)
+val VerdeMenta = Color(0xFFDDF5EA)          // Fondos suaves (íconos, pestaña activa)
+val AzulPetroleo = Color(0xFF0E7C86)        // Títulos y acentos
+val AzulPetroleoClaro = Color(0xFFCDEDEF)
+val AzulMarino = Color(0xFF0F3D5E)          // Texto principal
+val AzulMarinoSuave = Color(0xFF51708A)     // Texto secundario
+val CieloClaro = Color(0xFFD6F0FA)          // Degradado de fondo (arriba)
+val CieloBlanco = Color(0xFFF3FAFD)         // Degradado de fondo (abajo)
+val Blanco = Color(0xFFFFFFFF)
+val BordeSuave = Color(0xFFD5E7EE)
+val ErrorRojo = Color(0xFFDC2626)
 
-// Estados Tricolor del Botón Sincronizar (Pantalla 1)
-val SyncGrayDisabled = Color(0xFF94A3B8)      // Gris: cuando no hay nada que sincronizar
-val SyncYellowPendingOffline = Color(0xFFEAB308) // Amarillo: hay datos que sincronizar pero sin internet
-val SyncGreenReadyOnline = Color(0xFF16A34A)  // Verde: hay datos a sincronizar y conexión a internet
+// Estado de sincronización (P1): punto de color
+val SyncGris = Color(0xFF94A3B8)            // Sin jornadas pendientes
+val SyncAmarillo = Color(0xFFEAB308)        // Pendientes sin internet
+val SyncVerde = VerdeAccion                 // Listas para sincronizar

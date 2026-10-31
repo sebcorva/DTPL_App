@@ -186,7 +186,7 @@
 
 ### `[ISSUE-36]` Reloj del teléfono · 0,25 d ✅
 * **Criterios de aceptación:**
-  - [x] P1 muestra un aviso si la hora automática del teléfono está desactivada.
+  - [x] ~~P1 muestra un aviso si la hora automática del teléfono está desactivada.~~ Quitado en el rediseño de la P1 (ISSUE-41); se mantiene la ventana de fechas de la RPC.
   - [x] Ventana de fechas en la RPC (ver ISSUE-31).
 
 ---
@@ -253,11 +253,34 @@
 ### `[ISSUE-39]` 📝 Protección del inventario de herramientas — anotado, por decidir
 * Riesgo: la RPC actualiza `herramienta_catalogo.estado`, así que quien tenga acceso podría marcar todo como Extraviado. Opciones: (1) la RPC no toca el catálogo y el admin aplica; (2) solo usuarios con sesión (requiere ISSUE-38); (3) el estado solo empeora desde la app; (4) tope por jornada.
 
+### `[ISSUE-41]` ✅ Rediseño UI: tema completo + Pantalla 1 · 1 d
+> **Decisiones del 31-10-2026:** logo y portada como imágenes (pendientes: logo PNG 512×512 transparente; portada sin texto ~1200×800); fondo degradado sin nubes; sin "Ubicación"; barra inferior Inicio · Reportes · Usuario (próximamente); sin botón "Revisar últimas jornadas" (queda en Reportes); línea "Líder - Brigada" bajo Reanudar; sin aviso de hora automática; Nunito en toda la app; paleta nueva en el tema completo; solo modo claro. Las demás pantallas se rediseñan una por una.
+* **Criterios de aceptación:**
+  - [x] Tema: `Color.kt` (VerdeAccion #2EAE7A, AzulPetroleo #0E7C86, AzulMarino #0F3D5E…), `Type.kt` con Nunito variable incluida en `res/font` (licencia en `docs/licencias/`), fondo degradado global en `MainActivity`.
+  - [x] P1 según el diseño: encabezado, tarjeta de portada, botón Iniciar/Reanudar, tarjeta de estado de sincronización, `BarraInferior`.
+  - [x] `ReportesScreen` (últimas 5 jornadas) reemplaza el diálogo de "Ver últimos resúmenes".
+  - [x] La tarjeta de Instagram usa la nueva paleta y Nunito.
+  - [ ] Insertar el logo y la ilustración de portada cuando lleguen.
+
 ### `[ISSUE-40]` 📝 Otros puntos de seguridad — anotados, por decidir
 * `android:allowBackup="true"` respalda nombres, GPS y fotos; bucket público (fotos visibles con la URL, Ley 21.719); límite del bucket de 5 MB (la app sube ~180 KB); respaldo de la keystore de firma.
 
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
+
+### `[ISSUE-42]` 🛡️ Manejo de excepciones y mensajes de error · ~1 d (antes del piloto)
+* **Origen (31-10-2026):** la sincronización falló con `HTTP 404 … Could not find the function public.sincronizar_jornada(p) in the schema cache` (PGRST202; los catálogos con PGRST205). Causa: en Supabase se ejecutó el reset v4 pero no `supabase_schema.sql` (o PostgREST no recargó su caché). La app no perdió datos (las jornadas siguen `PENDIENTE_SYNC`), pero mostró al líder un mensaje técnico y la descarga de catálogos falló **en silencio**.
+* **Criterios de aceptación:**
+  - [ ] **Errores tipados** en `JornadaSyncRepository` (`sealed class ErrorSync`): sin internet / tiempo agotado, servidor no preparado (PGRST202/PGRST205, 404), no autorizado (401/403), jornada rechazada por validación de la RPC (`P0001` con el mensaje de la regla), error del servidor (5xx), foto local faltante, desconocido.
+  - [ ] **Transitorio vs. permanente:** los transitorios se reintentan (base para ISSUE-37 WorkManager); un rechazo de validación **no** se reintenta en bucle: la jornada pasa a un estado `ERROR_SYNC` con el motivo guardado, visible en Reportes, con opción "Reintentar".
+  - [ ] **Mensajes para el líder en lenguaje simple** (ej. "El servidor no está listo. Avisa a la coordinación. Tus datos siguen guardados en el teléfono."); el detalle técnico (código HTTP, código PostgREST, `id_registro`) va solo al log.
+  - [ ] **Catálogos:** `sincronizarCatalogosMaestros()` deja de tragarse el error (`catch (_: Exception) → false`); registra el motivo y, si falla, la app sigue con el catálogo local sin bloquear.
+  - [ ] **`CancellationException`:** los `catch (e: Exception)` dentro de corrutinas la vuelven a lanzar (hoy la capturan y cuentan una cancelación como error).
+  - [ ] **ViewModels:** los `viewModelScope.launch` que escriben en Room (P2–P9) atrapan errores de E/S y muestran un mensaje en vez de cerrar la app; revisar también cámara/compresión (`ImageCompressor`), escáner QR, servicio GPS y guardado/compartir de la P10.
+  - [ ] **Log centralizado** sin datos personales (sin nombres ni coordenadas); `HttpLoggingInterceptor` sigue solo en debug y nivel `BASIC` (ya es así: no expone la clave).
+  - [ ] **Diagnóstico previo al piloto:** al iniciar, si Supabase responde PGRST202/205 se muestra en la tarjeta de sincronización "Servidor en mantención" en vez de "N listas para sincronizar".
+  - [ ] Opcional, a decidir: reporte de cierres inesperados (p. ej. Firebase Crashlytics, gratuito) para el piloto.
+  - [ ] Tests unitarios por cada tipo de error (404 PGRST202, 400 P0001, 401, 500, timeout, cancelación).
 
 ---
 
@@ -270,9 +293,9 @@
 | 3 | ISSUE-22, ISSUE-23 | 1,5 d |
 | 4 | **ISSUE-31 → 32 → 33 → 34 → 35 → 36** (cambios v4) | 2,75 d |
 | 5 | ✅ ISSUE-24 → 25 → 26 | 2,25 d |
-| 6 | ISSUE-28 → 29 | 1,5 d |
+| 6 | ISSUE-41 ✅ (UI P1), ISSUE-42 → 28 → 29 | 3,5 d |
 | 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38 | 1,75 d |
-| **Total** | | **≈ 14 días** |
+| **Total** | | **≈ 16 días** |
 
 ```mermaid
 flowchart LR

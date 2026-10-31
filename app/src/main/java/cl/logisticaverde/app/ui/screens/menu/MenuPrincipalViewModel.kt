@@ -1,5 +1,6 @@
 package cl.logisticaverde.app.ui.screens.menu
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -27,30 +28,33 @@ enum class SyncButtonState {
     SINCRONIZANDO
 }
 
+/** Resultado de la última sincronización: la P1 lo muestra con animación + sonido, sin texto. */
+enum class ResultadoSync { EXITO, ERROR }
+
 data class MenuPrincipalUiState(
     val jornadaEnCurso: JornadaEntity? = null,
     val pendingSyncCount: Int = 0,
     val isOnline: Boolean = false,
     val syncButtonState: SyncButtonState = SyncButtonState.GRIS_SIN_DATOS,
-    val syncFeedbackMessage: String? = null
+    val resultadoSync: ResultadoSync? = null
 )
 
 class MenuPrincipalViewModel(
-    private val jornadaDao: JornadaDao,
+    jornadaDao: JornadaDao,
     private val syncRepository: JornadaSyncRepository,
     networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _isSyncing = MutableStateFlow(false)
-    private val _feedbackMessage = MutableStateFlow<String?>(null)
+    private val _resultadoSync = MutableStateFlow<ResultadoSync?>(null)
 
     val uiState: StateFlow<MenuPrincipalUiState> = combine(
         jornadaDao.observeJornadaEnCurso(),
         jornadaDao.observePendingSyncCount(),
         networkMonitor.isOnline,
         _isSyncing,
-        _feedbackMessage
-    ) { jornadaEnCurso, pendingCount, isOnline, isSyncing, feedback ->
+        _resultadoSync
+    ) { jornadaEnCurso, pendingCount, isOnline, isSyncing, resultado ->
         val buttonState = when {
             isSyncing -> SyncButtonState.SINCRONIZANDO
             pendingCount == 0 -> SyncButtonState.GRIS_SIN_DATOS
@@ -62,18 +66,13 @@ class MenuPrincipalViewModel(
             pendingSyncCount = pendingCount,
             isOnline = isOnline,
             syncButtonState = buttonState,
-            syncFeedbackMessage = feedback
+            resultadoSync = resultado
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = MenuPrincipalUiState()
     )
-
-    /** "Ver últimos resúmenes": hasta 5 jornadas cerradas, sincronizadas o pendientes (ISSUE-25). */
-    val ultimasJornadasCerradas: StateFlow<List<JornadaEntity>> = jornadaDao
-        .observeUltimasJornadasCerradas(MAX_RESUMENES)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
         // Si hay internet al abrir el menú, refresca silenciosamente los catálogos maestros desde Supabase
@@ -87,22 +86,25 @@ class MenuPrincipalViewModel(
         if (currentState.syncButtonState != SyncButtonState.VERDE_LISTO_PARA_SYNC) return
 
         viewModelScope.launch {
+            _resultadoSync.value = null
             _isSyncing.value = true
-            _feedbackMessage.value = "Sincronizando ${currentState.pendingSyncCount} jornada(s) con Supabase..."
 
             val result = syncRepository.sincronizarJornadasPendientes()
 
             _isSyncing.value = false
-            _feedbackMessage.value = result.message
+            // El detalle queda en el log; al líder solo se le muestra la animación (ISSUE-42 definirá los textos de error)
+            if (result.failedCount > 0) Log.w(TAG, result.message)
+            _resultadoSync.value = if (result.failedCount == 0) ResultadoSync.EXITO else ResultadoSync.ERROR
         }
     }
 
-    fun clearFeedbackMessage() {
-        _feedbackMessage.value = null
+    /** La P1 lo llama cuando termina la animación del resultado. */
+    fun limpiarResultadoSync() {
+        _resultadoSync.value = null
     }
 
-    companion object {
-        const val MAX_RESUMENES = 5
+    private companion object {
+        const val TAG = "MenuPrincipal"
     }
 
     class Factory(

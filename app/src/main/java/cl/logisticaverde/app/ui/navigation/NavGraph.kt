@@ -1,15 +1,9 @@
 package cl.logisticaverde.app.ui.navigation
 
-import android.content.Context
-import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -34,6 +28,8 @@ import cl.logisticaverde.app.ui.screens.menu.MenuPrincipalScreen
 import cl.logisticaverde.app.ui.screens.menu.MenuPrincipalViewModel
 import cl.logisticaverde.app.ui.screens.resumen.ResumenImpactoScreen
 import cl.logisticaverde.app.ui.screens.resumen.ResumenImpactoViewModel
+import cl.logisticaverde.app.ui.screens.reportes.ReportesScreen
+import cl.logisticaverde.app.ui.screens.reportes.ReportesViewModel
 
 object AppDestinations {
     const val PANTALLA_1_MENU = "pantalla_1_menu"
@@ -45,6 +41,7 @@ object AppDestinations {
     const val PANTALLA_7_ESTADO_HERRAMIENTAS = "pantalla_7_estado_herramientas"
     const val PANTALLA_8_PESAJE = "pantalla_8_pesaje"
     const val PANTALLA_9_ENTREGA_SACOS = "pantalla_9_entrega_sacos"
+    const val REPORTES = "reportes"
     const val ARG_ID_REGISTRO = "idRegistro"
     const val PANTALLA_10_RESUMEN = "pantalla_10_resumen/{$ARG_ID_REGISTRO}"
 
@@ -62,11 +59,6 @@ object AppDestinations {
         else -> PANTALLA_2_EQUIPO
     }
 }
-
-/** Ajustes > Fecha y hora > "Usar hora de la red". Si no se puede leer, se asume activa. */
-private fun esHoraAutomaticaActiva(context: Context): Boolean =
-    runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.AUTO_TIME) == 1 }
-        .getOrDefault(true)
 
 @Composable
 fun LogisticaVerdeNavHost(
@@ -116,19 +108,9 @@ fun LogisticaVerdeNavHost(
                 )
             )
             val menuUiState by menuViewModel.uiState.collectAsStateWithLifecycle()
-            val ultimasJornadas by menuViewModel.ultimasJornadasCerradas.collectAsStateWithLifecycle()
-
-            // ISSUE-36: se revisa cada vez que se vuelve al menú (por ejemplo, después de ir a Ajustes)
-            var horaAutomaticaDesactivada by remember { mutableStateOf(false) }
-            LifecycleResumeEffect(Unit) {
-                horaAutomaticaDesactivada = !esHoraAutomaticaActiva(context)
-                onPauseOrDispose { }
-            }
 
             MenuPrincipalScreen(
                 uiState = menuUiState,
-                horaAutomaticaDesactivada = horaAutomaticaDesactivada,
-                ultimasJornadas = ultimasJornadas,
                 onIniciarJornadaClick = {
                     flujoViewModel.cargarJornadaEnCursoSiExiste()
                     val targetRoute = menuUiState.jornadaEnCurso?.let {
@@ -139,9 +121,10 @@ fun LogisticaVerdeNavHost(
                 onSyncClick = {
                     menuViewModel.onSyncClicked()
                 },
-                onVerResumen = { idRegistro ->
-                    navController.navigate(AppDestinations.rutaResumen(idRegistro))
-                }
+                onReportesClick = {
+                    navController.navigate(AppDestinations.REPORTES) { launchSingleTop = true }
+                },
+                onFeedbackMostrado = menuViewModel::limpiarResultadoSync
             )
         }
 
@@ -295,6 +278,19 @@ fun LogisticaVerdeNavHost(
                         avanzarSinRetorno(AppDestinations.rutaResumen(idRegistro))
                     }
                 }
+            )
+        }
+
+        // REPORTES (barra inferior): últimas 5 jornadas cerradas → resumen P10
+        composable(AppDestinations.REPORTES) {
+            val reportesViewModel: ReportesViewModel = viewModel(
+                factory = ReportesViewModel.Factory(app.database.jornadaDao())
+            )
+            val jornadas by reportesViewModel.jornadas.collectAsStateWithLifecycle()
+            ReportesScreen(
+                jornadas = jornadas,
+                onVerResumen = { idRegistro -> navController.navigate(AppDestinations.rutaResumen(idRegistro)) },
+                onInicio = salirAlMenu
             )
         }
 

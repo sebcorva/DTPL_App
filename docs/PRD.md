@@ -40,7 +40,7 @@
 4. **Herramientas:** el QR se mantiene, pero la app muestra solo nombre y número ("Pinza 1"). La pesa sale del inventario. Nueva opción **"Esta brigada no lleva herramientas"**, que salta P7.
 5. **Motivo al omitir una foto:** campo de texto obligatorio en la misma pantalla.
 6. **Sin "Pantalla N de 10":** cada pantalla muestra solo su título.
-7. **Topes y reloj:** límites razonables en app y servidor; aviso en P1 si la hora automática está desactivada; la RPC rechaza fechas fuera de rango.
+7. **Topes y reloj:** límites razonables en app y servidor; la RPC rechaza fechas fuera de rango.
 8. **Room v4 y Supabase v4 se reconstruyen desde cero** (datos de prueba); las vistas de reportería se eliminan hasta rediseñar la planilla.
 
 ---
@@ -97,14 +97,16 @@ flowchart LR
 * **RF-NAV-5 — Reanudación:** si existe una jornada `EN_CURSO`, P1 ofrece `[ Reanudar Jornada ]` con el nombre del paso pendiente y navega exactamente a `pantalla_actual`.
 
 ### RF-P1: Pantalla 1 — Menú Principal y Sincronización Inteligente
-* **Encabezado:** título **"Deja tu Playa Limpia"** (sin nombre de playa: se elige en P2).
-* **Aviso de reloj:** si la hora automática del teléfono está desactivada, se muestra un aviso para activarla (la fecha y las horas de la jornada dependen del reloj).
-* **Acción central:** `[ Iniciar Jornada ]` o `[ Reanudar Jornada ]` con líder, brigada, playa y paso pendiente (RF-NAV-5).
-* **Acceso secundario:** `[ Ver últimos resúmenes ]` lista hasta **5 jornadas cerradas** del teléfono (pendientes o ya sincronizadas) y abre la Pantalla 10 de la elegida (visible solo si existe alguna).
-* **Botón `[ Sincronizar ]` tricolor** según las jornadas `PENDIENTE_SYNC` en Room y la conectividad:
-  * ⚪ **Gris (inactivo):** `pendientes == 0`.
-  * 🟡 **Amarillo:** `pendientes > 0` y sin internet.
-  * 🟢 **Verde:** `pendientes > 0` y con internet. Al presionarlo sincroniza (§5) y muestra el resultado.
+* **Diseño (31-10-2026):** fondo degradado celeste → blanco, tipografía Nunito, solo modo claro.
+* **Encabezado:** logo (imagen pendiente) + **"Deja tu Playa Limpia"** (sin ubicación ni playa: se elige en P2).
+* **Tarjeta de portada:** "Playas limpias, comunidades más fuertes / Tu acción hoy, un mejor mañana" sobre una ilustración (pendiente; mientras, degradado).
+* **Acción central:** `[ Iniciar jornada ]` o `[ Reanudar jornada ]`; si hay una en curso, debajo se muestra "Líder - Brigada".
+* **Barra inferior:** Inicio · **Reportes** (últimas 5 jornadas cerradas, pendientes o sincronizadas → Pantalla 10) · Usuario (atenuado, "próximamente", ISSUE-38).
+* **Tarjeta "Estado de sincronización"** según las jornadas `PENDIENTE_SYNC` en Room y la conectividad (punto de color + texto):
+  * ⚪ **Gris:** "Sin jornadas pendientes".
+  * 🟡 **Amarillo:** "N pendientes · sin internet".
+  * 🟢 **Verde:** "N listas para sincronizar". Solo en este estado se puede tocar: sincroniza (§5) y muestra el resultado unos segundos.
+  * "Sincronizando…" con indicador de carga mientras envía.
   * Si una jornada **no** se pudo enviar (red, error del servidor o **APK sin configuración de nube**), permanece `PENDIENTE_SYNC` y el mensaje lo explica. El botón nunca pasa a Gris por una sincronización que no ocurrió.
 
 ### RF-P2: Pantalla 2 — Conformación de Brigada (nombres escritos a mano)

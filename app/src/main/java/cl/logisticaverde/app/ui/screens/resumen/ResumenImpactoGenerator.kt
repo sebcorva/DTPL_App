@@ -11,13 +11,14 @@ import android.graphics.Typeface
 import android.text.TextPaint
 import android.text.TextUtils
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.res.ResourcesCompat
 import cl.logisticaverde.app.R
 import cl.logisticaverde.app.domain.resumen.FormatoResumen
 import cl.logisticaverde.app.domain.resumen.ResumenImpacto
-import cl.logisticaverde.app.ui.theme.EmeraldGreenDark
-import cl.logisticaverde.app.ui.theme.EmeraldGreenLight
-import cl.logisticaverde.app.ui.theme.EmeraldGreenPrimary
-import cl.logisticaverde.app.ui.theme.OceanTealSecondary
+import cl.logisticaverde.app.ui.theme.AzulMarino
+import cl.logisticaverde.app.ui.theme.VerdeMenta
+import cl.logisticaverde.app.ui.theme.VerdeAccion
+import cl.logisticaverde.app.ui.theme.AzulPetroleo
 import java.io.File
 import java.io.FileOutputStream
 
@@ -32,17 +33,21 @@ object ResumenImpactoGenerator {
     private const val MARGEN = 72f
     private const val CARPETA_COMPARTIR = "compartir"
 
+    // Nunito variable: el peso se fija con el eje "wght" del Paint
+    private var fuente: Typeface = Typeface.SANS_SERIF
+
     fun generar(context: Context, resumen: ResumenImpacto): Bitmap {
+        fuente = runCatching { ResourcesCompat.getFont(context, R.font.nunito) }.getOrNull() ?: Typeface.SANS_SERIF
         val bitmap = Bitmap.createBitmap(ANCHO, ALTO, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val blanco = android.graphics.Color.WHITE
-        val claro = EmeraldGreenLight.toArgb()
+        val claro = VerdeMenta.toArgb()
 
         // Fondo con degradado de la marca
         val fondo = Paint().apply {
             shader = LinearGradient(
                 0f, 0f, 0f, ALTO.toFloat(),
-                EmeraldGreenPrimary.toArgb(), OceanTealSecondary.toArgb(), Shader.TileMode.CLAMP
+                VerdeAccion.toArgb(), AzulPetroleo.toArgb(), Shader.TileMode.CLAMP
             )
         }
         canvas.drawRect(0f, 0f, ANCHO.toFloat(), ALTO.toFloat(), fondo)
@@ -90,8 +95,8 @@ object ResumenImpactoGenerator {
             val top = y + fila * (celdaAlto + gap)
             canvas.drawRoundRect(RectF(left, top, left + celdaAncho, top + celdaAlto), 36f, 36f, tarjeta)
             val cx = left + celdaAncho / 2f
-            texto(canvas, valor, top + 105f, 66f, EmeraldGreenDark.toArgb(), negrita = true, ancho = celdaAncho - 40f, centroX = cx)
-            texto(canvas, etiqueta, top + 170f, 36f, OceanTealSecondary.toArgb(), ancho = celdaAncho - 40f, centroX = cx)
+            texto(canvas, valor, top + 105f, 66f, AzulMarino.toArgb(), negrita = true, ancho = celdaAncho - 40f, centroX = cx)
+            texto(canvas, etiqueta, top + 170f, 36f, AzulPetroleo.toArgb(), ancho = celdaAncho - 40f, centroX = cx)
         }
         y += 2 * celdaAlto + gap
 
@@ -136,7 +141,8 @@ object ResumenImpactoGenerator {
             this.color = color
             textSize = tamano
             textAlign = Paint.Align.CENTER
-            typeface = Typeface.create(Typeface.SANS_SERIF, if (negrita) Typeface.BOLD else Typeface.NORMAL)
+            typeface = fuente
+            fontVariationSettings = if (negrita) "'wght' 800" else "'wght' 500"
         }
         val linea = TextUtils.ellipsize(contenido, paint, ancho, TextUtils.TruncateAt.END).toString()
         canvas.drawText(linea, centroX, baseY, paint)

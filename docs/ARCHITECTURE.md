@@ -48,7 +48,7 @@ app/src/main/java/cl/logisticaverde/app/
 
 ```mermaid
 flowchart TD
-    P1["P1 Menú\n[Iniciar/Reanudar] [Sincronizar] [Ver últimos resúmenes]"]
+    P1["P1 Menú\n[Iniciar/Reanudar] [Estado de sincronización]\nBarra: Inicio · Reportes · Usuario"]
     P2["P2 Brigada\nlíder + voluntarios + playa"]
     P3["P3 Sectores + Foto inicio"]
     P4["P4 QR herramientas"]
@@ -156,7 +156,7 @@ sequenceDiagram
 * `ResumenImpactoViewModel` carga la jornada por `idRegistro` (ruta `pantalla_10_resumen/{idRegistro}`). La vista previa es el mismo bitmap que se comparte.
 * `ResumenImpactoGenerator` dibuja la tarjeta de 1080×1920 (solo cifras, sin fotos) sobre un `Canvas` y la guarda en `cacheDir/compartir/` (única carpeta nueva expuesta por el FileProvider).
 * `CompartirResumen`: `ACTION_SEND` dirigido a `com.instagram.android` → selector estándar si no está instalado. Guardado en galería con `MediaStore` (Android 10+) o archivo + `MediaScannerConnection` con `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion=28`) en Android 8–9.
-* P1 `Ver últimos resúmenes`: `JornadaDao.observeUltimasJornadasCerradas(5)`.
+* Pestaña **Reportes** (`ReportesScreen` / `ReportesViewModel`): `JornadaDao.observeUltimasJornadasCerradas(5)`.
 
 ## 9. Configuración de Build
 

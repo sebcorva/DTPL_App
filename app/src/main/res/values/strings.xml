@@ -2,8 +2,11 @@
 <resources>
     <string name="app_name">Deja tu Playa Limpia</string>
     <string name="main_header_title">Deja tu Playa Limpia</string>
-    <string name="btn_start_shift">Iniciar Jornada</string>
-    <string name="btn_resume_shift">Reanudar Jornada</string>
+    <string name="btn_start_shift">Iniciar jornada</string>
+    <string name="btn_resume_shift">Reanudar jornada</string>
+    <string name="main_header_title_dos_lineas">Deja tu\nPlaya Limpia</string>
+    <string name="portada_titulo">Playas limpias,\ncomunidades más fuertes</string>
+    <string name="portada_subtitulo">Tu acción hoy,\nun mejor mañana</string>
     <string name="btn_sync">Sincronizar</string>
     <string name="btn_next">Siguiente</string>
     <string name="btn_save">Guardar</string>

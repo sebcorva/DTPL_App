@@ -23,6 +23,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import cl.logisticaverde.app.ui.theme.ErrorRojo
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,8 +57,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -121,7 +125,7 @@ fun MenuPrincipalScreen(
 @Composable
 private fun Encabezado() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        // Espacio del logo: queda vacío hasta que llegue la imagen (PNG 512×512 con fondo transparente)
+        // Logo (res/drawable-nodpi/logo_app.webp) con anillo blanco, como en el diseño
         Box(
             modifier = Modifier
                 .size(88.dp)
@@ -129,7 +133,16 @@ private fun Encabezado() {
                 .clip(CircleShape)
                 .background(Blanco)
                 .border(2.dp, BordeSuave, CircleShape)
-        )
+                .padding(4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.logo_app),
+                contentDescription = "Logo Deja tu Playa Limpia",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
         Spacer(Modifier.width(14.dp))
         Text(
             text = stringResource(R.string.main_header_title_dos_lineas),
@@ -140,26 +153,36 @@ private fun Encabezado() {
     }
 }
 
-/** Tarjeta "Playas limpias": degradado provisorio hasta que llegue la ilustración (sin texto, ~1200×800). */
+/** Tarjeta "Playas limpias": ilustración (res/drawable-nodpi/portada_p1.webp) con el texto encima, sobre el cielo. */
 @Composable
 private fun TarjetaPortada() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(220.dp)
+            .height(240.dp)
             .shadow(8.dp, RoundedCornerShape(28.dp))
             .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.verticalGradient(
-                    0f to Color(0xFFE6F6FC),
-                    0.55f to Color(0xFF9FDCEB),
-                    0.78f to Color(0xFF4FC1D6),
-                    1f to Color(0xFFF2DDB0)
-                )
-            )
-            .padding(20.dp)
     ) {
-        Column {
+        Image(
+            painter = painterResource(R.drawable.portada_p1),
+            contentDescription = null, // decorativa: el texto de encima es el contenido
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.CenterEnd, // conserva el saco y el castillo si hay que recortar
+            modifier = Modifier.fillMaxSize()
+        )
+        // Velo blanco suave arriba a la izquierda: el texto se lee aunque toque el castillo o el horizonte
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(Color.White.copy(alpha = 0.75f), Color.White.copy(alpha = 0f)),
+                        center = Offset(0f, 0f),
+                        radius = 1100f
+                    )
+                )
+        )
+        Column(modifier = Modifier.padding(20.dp)) {
             Text(
                 text = stringResource(R.string.portada_titulo),
                 style = MaterialTheme.typography.titleLarge,

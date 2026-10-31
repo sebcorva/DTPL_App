@@ -260,7 +260,7 @@
   - [x] P1 según el diseño: encabezado, tarjeta de portada, botón Iniciar/Reanudar, tarjeta de estado de sincronización, `BarraInferior`.
   - [x] `ReportesScreen` (últimas 5 jornadas) reemplaza el diálogo de "Ver últimos resúmenes".
   - [x] La tarjeta de Instagram usa la nueva paleta y Nunito.
-  - [ ] Insertar el logo y la ilustración de portada cuando lleguen.
+  - [x] Logo y portada en `res/drawable-nodpi` (WebP: `logo_app`, `portada_p1`; originales en `Mockup/assets/`).
 
 ### `[ISSUE-40]` 📝 Otros puntos de seguridad — anotados, por decidir
 * `android:allowBackup="true"` respalda nombres, GPS y fotos; bucket público (fotos visibles con la URL, Ley 21.719); límite del bucket de 5 MB (la app sube ~180 KB); respaldo de la keystore de firma.

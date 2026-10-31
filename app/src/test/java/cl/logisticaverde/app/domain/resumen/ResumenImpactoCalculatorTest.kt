@@ -96,5 +96,8 @@ class ResumenImpactoCalculatorTest {
         assertEquals("45 min", FormatoResumen.duracion(45 * 60_000L))
         assertEquals("3 h", FormatoResumen.duracion(180 * 60_000L))
         assertEquals("412 · Colillas de cigarro", FormatoResumen.residuo(ResiduoDestacado("Colillas de cigarro", 412)))
+        // Tarjeta "Última jornada" (P1): 31-10-2026 09:00 en Chile (UTC-3)
+        assertEquals("Sáb, 31 oct 2026 · 9:00", FormatoResumen.fechaConHora("2026-10-31", 1_793_448_000_000L))
+        assertEquals("Sáb, 31 oct 2026", FormatoResumen.fechaConHora("2026-10-31", 0L))
     }
 }

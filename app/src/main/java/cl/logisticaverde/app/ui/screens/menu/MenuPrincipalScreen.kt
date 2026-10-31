@@ -93,6 +93,7 @@ fun MenuPrincipalScreen(
     onSyncClick: () -> Unit,
     modifier: Modifier = Modifier,
     onReportesClick: () -> Unit = {},
+    onVerUltimaJornada: (idRegistro: String) -> Unit = {},
     onFeedbackMostrado: () -> Unit = {}
 ) {
     Column(modifier = modifier.fillMaxSize()) {
@@ -107,6 +108,10 @@ fun MenuPrincipalScreen(
             Encabezado()
             TarjetaPortada()
             BotonJornada(uiState, onIniciarJornadaClick)
+            uiState.ultimaJornada?.let { ultima ->
+                TarjetaUltimaJornada(ultima = ultima, onClick = { onVerUltimaJornada(ultima.idRegistro) })
+            }
+            Spacer(Modifier.height(4.dp))
         }
         TarjetaSincronizacion(
             uiState = uiState,

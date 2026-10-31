@@ -37,6 +37,11 @@ class FakeJornadaDao : JornadaDao {
         }
     }
 
+    override fun observeUltimaJornadaCerrada(): Flow<JornadaEntity?> =
+        jornadasFlow.map { list ->
+            list.filter { it.estadoSync != JornadaEntity.SYNC_EN_CURSO }.maxByOrNull { it.horaInicioMs }
+        }
+
     override fun observeJornadasRechazadas(): Flow<List<JornadaEntity>> =
         jornadasFlow.map { list -> list.filter { it.estadoSync == JornadaEntity.SYNC_ERROR }.sortedByDescending { it.horaInicioMs } }
 

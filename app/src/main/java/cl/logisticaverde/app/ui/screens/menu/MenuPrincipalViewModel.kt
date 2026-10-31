@@ -9,7 +9,13 @@ import cl.logisticaverde.app.data.repository.EstadoServidor
 import cl.logisticaverde.app.data.repository.JornadaSyncRepository
 import cl.logisticaverde.app.domain.sync.ErrorSync
 import cl.logisticaverde.app.domain.util.NetworkMonitor
+import cl.logisticaverde.app.domain.resumen.FormatoResumen
+import cl.logisticaverde.app.domain.resumen.ResumenImpactoCalculator
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -39,6 +45,17 @@ sealed interface ResultadoSync {
     data class Error(val mensaje: String) : ResultadoSync
 }
 
+/** Tarjeta "Última jornada" de la P1. */
+data class UltimaJornadaUi(
+    val idRegistro: String,
+    val nombrePlaya: String,
+    val fechaTexto: String,
+    val kgRecolectados: Float,
+    val items: Int,
+    val porcentajeReciclaje: Int,
+    val kmRecorridos: Float
+)
+
 data class MenuPrincipalUiState(
     val jornadaEnCurso: JornadaEntity? = null,
     val pendingSyncCount: Int = 0,
@@ -47,7 +64,8 @@ data class MenuPrincipalUiState(
     val resultadoSync: ResultadoSync? = null,
     // ISSUE-42
     val rechazadasCount: Int = 0,
-    val servidorEnMantencion: Boolean = false
+    val servidorEnMantencion: Boolean = false,
+    val ultimaJornada: UltimaJornadaUi? = null
 )
 
 class MenuPrincipalViewModel(
@@ -62,11 +80,39 @@ class MenuPrincipalViewModel(
     private val _mantencion = MutableStateFlow(false)
     private var ultimaRevisionMs = 0L
 
+    private data class Conteos(
+        val pendientes: Int,
+        val rechazadas: Int,
+        val mantencion: Boolean,
+        val ultima: UltimaJornadaUi?
+    )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val ultimaJornada = jornadaDao.observeUltimaJornadaCerrada().flatMapLatest { j ->
+        if (j == null) {
+            flowOf(null)
+        } else {
+            jornadaDao.observeBasuraRecolectada(j.idRegistro).map { basura ->
+                val resumen = ResumenImpactoCalculator.calcular(j, basura)
+                UltimaJornadaUi(
+                    idRegistro = j.idRegistro,
+                    nombrePlaya = j.nombrePlaya,
+                    fechaTexto = FormatoResumen.fechaConHora(j.fechaJornada, j.horaInicioMs),
+                    kgRecolectados = resumen.kgTotales,
+                    items = basura.sumOf { it.cantidad },
+                    porcentajeReciclaje = resumen.porcentajeReciclable,
+                    kmRecorridos = resumen.kmRecorridos
+                )
+            }
+        }
+    }
+
     private val conteos = combine(
         jornadaDao.observePendingSyncCount(),
         jornadaDao.observeRechazadasCount(),
-        _mantencion
-    ) { pendientes, rechazadas, mantencion -> Triple(pendientes, rechazadas, mantencion) }
+        _mantencion,
+        ultimaJornada
+    ) { pendientes, rechazadas, mantencion, ultima -> Conteos(pendientes, rechazadas, mantencion, ultima) }
 
     val uiState: StateFlow<MenuPrincipalUiState> = combine(
         jornadaDao.observeJornadaEnCurso(),
@@ -74,7 +120,7 @@ class MenuPrincipalViewModel(
         networkMonitor.isOnline,
         _isSyncing,
         _resultadoSync
-    ) { jornadaEnCurso, (pendingCount, rechazadas, mantencion), isOnline, isSyncing, resultado ->
+    ) { jornadaEnCurso, (pendingCount, rechazadas, mantencion, ultima), isOnline, isSyncing, resultado ->
         val buttonState = when {
             isSyncing -> SyncButtonState.SINCRONIZANDO
             pendingCount == 0 -> SyncButtonState.GRIS_SIN_DATOS
@@ -89,7 +135,8 @@ class MenuPrincipalViewModel(
             syncButtonState = buttonState,
             resultadoSync = resultado,
             rechazadasCount = rechazadas,
-            servidorEnMantencion = mantencion
+            servidorEnMantencion = mantencion,
+            ultimaJornada = ultima
         )
     }.stateIn(
         scope = viewModelScope,

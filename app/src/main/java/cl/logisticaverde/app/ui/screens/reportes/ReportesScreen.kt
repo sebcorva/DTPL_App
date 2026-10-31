@@ -197,7 +197,7 @@ fun ReportesScreen(
                 modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
             )
             Text(
-                "Las últimas 5 jornadas cerradas en este teléfono. Toca una para ver su resumen.",
+                "Toca una jornada para ver su resumen.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = AzulMarinoSuave,
                 modifier = Modifier.padding(bottom = 16.dp)

@@ -114,5 +114,18 @@ object FormatoResumen {
         }
     }
 
+    private val DIAS = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+
+    /** Tarjeta "Última jornada" de la P1: "Sáb, 31 oct 2026 · 9:00" (hora de inicio, en Chile, 24 h). */
+    fun fechaConHora(iso: String, horaInicioMs: Long): String {
+        val fechaTexto = runCatching {
+            val d = LocalDate.parse(iso)
+            "${DIAS[d.dayOfWeek.value - 1]}, ${fecha(iso)}"
+        }.getOrDefault(iso)
+        if (horaInicioMs <= 0L) return fechaTexto
+        val hora = java.time.Instant.ofEpochMilli(horaInicioMs).atZone(java.time.ZoneId.of("America/Santiago"))
+        return "$fechaTexto · ${hora.hour}:${hora.minute.toString().padStart(2, '0')}"
+    }
+
     fun residuo(r: ResiduoDestacado): String = "${entero(r.cantidad)} · ${r.nombre}"
 }

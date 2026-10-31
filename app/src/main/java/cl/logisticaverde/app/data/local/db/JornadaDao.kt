@@ -25,6 +25,15 @@ interface JornadaDao {
     @Query("SELECT * FROM jornada WHERE id_registro = :idRegistro LIMIT 1")
     suspend fun getJornadaById(idRegistro: String): JornadaEntity?
 
+    /** P1 tarjeta "Última jornada": la última cerrada (pendiente, sincronizada o rechazada). */
+    @Query(
+        """
+        SELECT * FROM jornada WHERE estado_sync IN ('PENDIENTE_SYNC', 'SINCRONIZADO', 'ERROR_SYNC')
+        ORDER BY hora_inicio_ms DESC LIMIT 1
+        """
+    )
+    fun observeUltimaJornadaCerrada(): Flow<JornadaEntity?>
+
     /** P1 "Ver últimos resúmenes": hasta 5 jornadas cerradas, sincronizadas o no (ISSUE-25). */
     @Query(
         """

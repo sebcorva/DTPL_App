@@ -147,7 +147,10 @@ fun LogisticaVerdeNavHost(
                     onSyncClick = {
                         menuViewModel.onSyncClicked()
                     },
-                    onReportesClick = {
+                    onVerUltimaJornada = { idRegistro ->
+                    navController.navigate(AppDestinations.rutaResumen(idRegistro))
+                },
+                onReportesClick = {
                         navController.navigate(AppDestinations.REPORTES) { launchSingleTop = true }
                     },
                     onFeedbackMostrado = menuViewModel::limpiarResultadoSync

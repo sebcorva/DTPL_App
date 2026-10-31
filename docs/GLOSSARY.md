@@ -76,7 +76,9 @@ La `categoria_origen` no se pide al usuario: viene definida por el catálogo.
 * **`id_registro`:** identificador de la jornada (`REG-AAAAMMDD-XXXXXX`) generado en el teléfono. Garantiza la idempotencia: la RPC nunca inserta dos veces la misma jornada.
 * **`pantalla_actual`:** última pantalla alcanzada (1..10); permite reanudar tras un cierre o apagón. Existe solo en Room. La app ya no muestra el número (v4).
 * **Topes de la jornada:** participantes ≤ 60, conteo por residuo ≤ 5.000, sacos ≤ 100, kg ≤ 2.500, km ≤ 30, duración ≤ 12 h (`TopesJornada.kt` y la RPC).
-* **`estado_sync`:** `EN_CURSO` (flujo abierto) → `PENDIENTE_SYNC` (guardada en P9) → `SINCRONIZADO` (confirmada por la RPC). Existe solo en Room.
+* **`estado_sync`:** `EN_CURSO` (flujo abierto) → `PENDIENTE_SYNC` (guardada en P9) → `SINCRONIZADO` (confirmada por la RPC), o `ERROR_SYNC` (rechazada por la RPC o falta una foto; motivo en `motivo_error_sync`). Existe solo en Room.
+* **Jornada rechazada (`ERROR_SYNC`):** no se edita nunca; solo "Reintentar" en Reportes, que reenvía los mismos datos. En Supabase queda una copia en `jornada_rechazada` para el administrador.
+* **Servidor en mantención:** Supabase responde PGRST202/205 (SQL sin ejecutar o caché sin recargar); la app no intenta sincronizar.
 * **`participante_jornada`:** tabla hija con `nombre` y `rol` (`LIDER` | `VOLUNTARIO`) de cada integrante.
 * **`total_participantes`:** 1 líder + N voluntarios; base de las horas-voluntario.
 * **`sectores_ids_csv` / `sectores_csv`:** IDs (para reanudar y deduplicar) y nombres (para mostrar) de los sectores elegidos.

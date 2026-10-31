@@ -126,6 +126,23 @@ CREATE TABLE IF NOT EXISTS public.basura_recolectada (
     PRIMARY KEY (id_registro, id_tipo_basura)
 );
 
+-- ISSUE-42: copia de solo lectura de cada jornada que la RPC rechazó, para que el
+-- administrador vea qué falló sin pedir el teléfono. No cuenta en ningún reporte.
+-- Un mismo motivo para la misma jornada se acumula en "intentos" (no duplica filas).
+CREATE TABLE IF NOT EXISTS public.jornada_rechazada (
+    id BIGSERIAL PRIMARY KEY,
+    id_registro TEXT NOT NULL,              -- '' si el payload no traía uno válido
+    motivo TEXT NOT NULL,
+    payload JSONB,                          -- NULL si el payload superaba 100 kB
+    intentos INTEGER NOT NULL DEFAULT 1,
+    primer_intento TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ultimo_intento TIMESTAMPTZ NOT NULL DEFAULT now(),
+    resuelta BOOLEAN NOT NULL DEFAULT FALSE, -- TRUE cuando la jornada entra después (reintento)
+    UNIQUE (id_registro, motivo)
+);
+CREATE INDEX IF NOT EXISTS idx_jornada_rechazada_pendientes
+    ON public.jornada_rechazada (ultimo_intento DESC) WHERE NOT resuelta;
+
 
 -- ============================================================================
 -- 3. ROW LEVEL SECURITY Y PERMISOS
@@ -138,11 +155,13 @@ ALTER TABLE public.jornada ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.participante_jornada ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.herramienta_jornada ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.basura_recolectada ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.jornada_rechazada ENABLE ROW LEVEL SECURITY;
 
 -- Doble barrera: además de RLS, se quitan los privilegios que Supabase otorga por defecto
 REVOKE ALL ON
     public.playa_catalogo, public.sector_catalogo, public.herramienta_catalogo, public.tipo_basura_catalogo,
-    public.jornada, public.participante_jornada, public.herramienta_jornada, public.basura_recolectada
+    public.jornada, public.participante_jornada, public.herramienta_jornada, public.basura_recolectada,
+    public.jornada_rechazada
 FROM anon, authenticated;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
 
@@ -195,18 +214,22 @@ ON public.tipo_basura_catalogo FOR SELECT TO anon, authenticated USING (true);
 --       "basura":        [ {"id_tipo_basura": "COLILLAS", "cantidad": 412} ]
 --   } }
 --
--- Respuesta: "INSERTADA" o "YA_EXISTIA". Cualquier dato inválido lanza un error
--- (HTTP 400) y no se guarda nada: la función corre en una sola transacción.
+-- Respuesta (HTTP 200): "INSERTADA", "YA_EXISTIA" o "RECHAZADA: <motivo>" (ISSUE-42).
+-- Un dato inválido no guarda nada de la jornada (todo o nada); el rechazo queda
+-- registrado en jornada_rechazada. Errores no previstos siguen respondiendo HTTP 4xx/5xx.
+--
+-- Estructura: sincronizar_jornada_interna valida e inserta (lanza error si algo es
+-- inválido); sincronizar_jornada (pública) la envuelve y convierte los errores de
+-- validación en "RECHAZADA". La interna no es ejecutable por anon.
 --
 -- Campos que el servidor calcula y NO toma del payload (evita inconsistencias):
 --   nombre_lider, voluntarios_csv, total_participantes (desde participantes),
 --   nombre_playa (desde playa_catalogo), sectores_csv, area_total_m2 (desde
 --   sector_catalogo, sin repetir sectores), kg_totales (normal + reciclable),
 --   nombre_herramienta, nombre_visible y categoria_origen (desde los catálogos).
-CREATE OR REPLACE FUNCTION public.sincronizar_jornada(p jsonb)
+CREATE OR REPLACE FUNCTION public.sincronizar_jornada_interna(p jsonb)
 RETURNS text
 LANGUAGE plpgsql
-SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
@@ -541,6 +564,48 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.sincronizar_jornada_interna(jsonb) FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.sincronizar_jornada(p jsonb)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_resultado text;
+    v_motivo text;
+    v_id text;
+    c_max_payload constant integer := 100000;   -- bytes guardados por rechazo
+    c_max_pendientes constant integer := 5000;  -- tope de filas sin resolver (anti-spam con la clave pública)
+BEGIN
+    v_id := left(COALESCE(p -> 'jornada' ->> 'id_registro', ''), 40);
+
+    BEGIN
+        v_resultado := sincronizar_jornada_interna(p);
+    EXCEPTION
+        -- Clase 22 (datos inválidos: validaciones, casts) y 23 (CHECK/FK/únicos)
+        WHEN data_exception OR integrity_constraint_violation THEN
+            GET STACKED DIAGNOSTICS v_motivo = MESSAGE_TEXT;
+            v_motivo := left(v_motivo, 300);
+            IF (SELECT COUNT(*) FROM jornada_rechazada WHERE NOT resuelta) < c_max_pendientes THEN
+                INSERT INTO jornada_rechazada (id_registro, motivo, payload)
+                VALUES (v_id, v_motivo, CASE WHEN pg_column_size(p) <= c_max_payload THEN p END)
+                ON CONFLICT (id_registro, motivo) DO UPDATE
+                   SET intentos = jornada_rechazada.intentos + 1,
+                       ultimo_intento = now(),
+                       resuelta = FALSE;
+            END IF;
+            RETURN 'RECHAZADA: ' || v_motivo;
+    END;
+
+    IF v_resultado IN ('INSERTADA', 'YA_EXISTIA') AND v_id <> '' THEN
+        UPDATE jornada_rechazada SET resuelta = TRUE WHERE id_registro = v_id AND NOT resuelta;
+    END IF;
+    RETURN v_resultado;
+END;
+$$;
+
 REVOKE ALL ON FUNCTION public.sincronizar_jornada(jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.sincronizar_jornada(jsonb) TO anon, service_role;
 
@@ -653,6 +718,20 @@ WITH CHECK (
 --    curl -X POST "$SUPABASE_URL/storage/v1/object/evidencias-fotos/REG-20261030-TEST01_1_inicio.jpg" \
 --      -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: image/jpeg" --data-binary @foto.jpg
 --    Con -H "x-upsert: true" también debe fallar.
+-- 6) Jornada inválida → HTTP 200 "RECHAZADA: …" y queda en jornada_rechazada (ISSUE-42).
+--    Ej.: rpc_ejemplo.json con "brigada": "Brigada Z" → "RECHAZADA: brigada inválida: Brigada Z".
+--    Ver los rechazos (SQL Editor, como admin):
+--    SELECT id_registro, motivo, intentos, ultimo_intento, resuelta
+--      FROM public.jornada_rechazada ORDER BY ultimo_intento DESC;
+-- 7) La función interna NO es ejecutable con la clave pública (404/401):
+--    curl -X POST "$SUPABASE_URL/rest/v1/rpc/sincronizar_jornada_interna" \
+--      -H "apikey: $KEY" -H "Content-Type: application/json" -d @docs/rpc_ejemplo.json
+-- 8) jornada_rechazada NO es visible con la clave pública (401/403):
+--    curl "$SUPABASE_URL/rest/v1/jornada_rechazada?select=*" -H "apikey: $KEY"
 --
 -- Para borrar las jornadas de prueba (SQL Editor, como admin):
 --    DELETE FROM public.jornada WHERE id_registro LIKE 'REG-%-TEST%';
+--    DELETE FROM public.jornada_rechazada WHERE id_registro LIKE 'REG-%-TEST%';
+
+-- Supabase (PostgREST) debe recargar su caché para ver tablas y funciones nuevas
+NOTIFY pgrst, 'reload schema';

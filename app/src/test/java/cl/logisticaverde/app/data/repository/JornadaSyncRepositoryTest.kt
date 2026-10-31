@@ -11,6 +11,7 @@ import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.TipoBasuraCatalogoEntity
 import cl.logisticaverde.app.data.remote.SincronizarJornadaRequest
 import cl.logisticaverde.app.data.remote.SupabaseApi
+import cl.logisticaverde.app.domain.sync.ErrorSync
 import cl.logisticaverde.app.fakes.FakeCatalogoDao
 import cl.logisticaverde.app.fakes.FakeJornadaDao
 import kotlinx.coroutines.test.runTest
@@ -54,9 +55,9 @@ class JornadaSyncRepositoryTest {
     )
 
     /** Jornada PENDIENTE_SYNC con 2 fotos (la de sacos se omitió), participantes, una herramienta y conteo. */
-    private suspend fun insertarJornadaPendiente() {
-        val foto1 = tempFolder.newFile("inicio.jpg").apply { writeBytes(byteArrayOf(10, 20, 30)) }
-        val foto2 = tempFolder.newFile("limpio.jpg").apply { writeBytes(byteArrayOf(40, 50, 60)) }
+    private suspend fun insertarJornadaPendiente(idRegistro: String = this.idRegistro) {
+        val foto1 = tempFolder.newFile("${idRegistro}_inicio.jpg").apply { writeBytes(byteArrayOf(10, 20, 30)) }
+        val foto2 = tempFolder.newFile("${idRegistro}_limpio.jpg").apply { writeBytes(byteArrayOf(40, 50, 60)) }
         fakeJornadaDao.insertJornada(
             JornadaEntity(
                 idRegistro = idRegistro,
@@ -123,7 +124,7 @@ class JornadaSyncRepositoryTest {
 
         assertEquals(0, result.successCount)
         assertEquals(1, result.failedCount)
-        assertEquals(JornadaSyncRepository.MENSAJE_SIN_CONFIGURACION, result.message)
+        assertEquals(ErrorSync.SinConfiguracion, result.error)
         assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
         assertEquals(0, fakeApi.fotosSubidas.size)
         assertEquals(0, fakeApi.rpcRecibidas.size)
@@ -212,7 +213,7 @@ class JornadaSyncRepositoryTest {
     }
 
     @Test
-    fun `RPC rechaza los datos - sigue PENDIENTE_SYNC, muestra el motivo y conserva las URLs para reintentar`() = runTest {
+    fun `Servidor antiguo responde 400 de validacion - ERROR_SYNC con motivo y el reintento no resube fotos`() = runTest {
         insertarJornadaPendiente()
         fakeApi.respuestaRpc = {
             Response.error(
@@ -225,17 +226,137 @@ class JornadaSyncRepositoryTest {
         val result = repository().sincronizarJornadasPendientes()
 
         assertEquals(1, result.failedCount)
-        assertTrue(result.message.contains("Promedio por saco supera 25 kg"))
+        assertEquals(1, result.rechazadasCount)
+        assertEquals(ErrorSync.Rechazada("Promedio por saco supera 25 kg (Ley 20.949)"), result.error)
         val enRoom = fakeJornadaDao.getJornadaById(idRegistro)!!
-        assertEquals(JornadaEntity.SYNC_PENDIENTE, enRoom.estadoSync)
+        assertEquals(JornadaEntity.SYNC_ERROR, enRoom.estadoSync)
+        assertEquals("Promedio por saco supera 25 kg (Ley 20.949)", enRoom.motivoErrorSync)
         assertNotNull(enRoom.urlFotoInicio)
 
-        // El reintento ya no vuelve a subir las fotos
+        // Una rechazada no vuelve a intentarse sola en la sincronización normal
+        assertEquals(0, repository().sincronizarJornadasPendientes().failedCount)
+
+        // "Reintentar" (servidor corregido): mismos datos, sin volver a subir fotos
         fakeApi.respuestaRpc = { Response.success(JornadaSyncRepository.RPC_INSERTADA) }
         val fotosAntes = fakeApi.fotosSubidas.size
-        repository().sincronizarJornadasPendientes()
+        val reintento = repository().sincronizarJornada(idRegistro)
+        assertEquals(1, reintento.successCount)
         assertEquals(fotosAntes, fakeApi.fotosSubidas.size)
         assertEquals(JornadaEntity.SYNC_SINCRONIZADO, estadoEnRoom())
+        assertNull(fakeJornadaDao.getJornadaById(idRegistro)!!.motivoErrorSync)
+    }
+
+    @Test
+    fun `RPC responde RECHAZADA - pasa a ERROR_SYNC con el motivo del servidor`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.respuestaRpc = { Response.success("RECHAZADA: Sector desconocido o de otra playa: SECTOR-07") }
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(1, result.rechazadasCount)
+        assertEquals("Jornada rechazada. Revisa Reportes.", result.message)
+        val enRoom = fakeJornadaDao.getJornadaById(idRegistro)!!
+        assertEquals(JornadaEntity.SYNC_ERROR, enRoom.estadoSync)
+        assertEquals("Sector desconocido o de otra playa: SECTOR-07", enRoom.motivoErrorSync)
+    }
+
+    @Test
+    fun `Servidor sin preparar (PGRST205 en catalogos) - mantencion, no llama a la RPC y sigue PENDIENTE`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.errorCatalogo = 404 to """{"code":"PGRST205","message":"Could not find the table"}"""
+
+        assertEquals(EstadoServidor.NO_PREPARADO, repository().sincronizarCatalogosMaestros())
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.ServidorNoPreparado, result.error)
+        assertEquals("El servidor está en mantención. Avisa al administrador.", result.message)
+        assertEquals(0, fakeApi.rpcRecibidas.size)
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
+    }
+
+    @Test
+    fun `RPC sin preparar (PGRST202) - ServidorNoPreparado y sigue PENDIENTE`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.respuestaRpc = {
+            Response.error(404, """{"code":"PGRST202","message":"Could not find the function"}""".toResponseBody("application/json".toMediaType()))
+        }
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.ServidorNoPreparado, result.error)
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
+    }
+
+    @Test
+    fun `401 - NoAutorizado y sigue PENDIENTE`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.respuestaRpc = {
+            Response.error(401, """{"message":"Invalid API key"}""".toResponseBody("application/json".toMediaType()))
+        }
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.NoAutorizado, result.error)
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
+    }
+
+    @Test
+    fun `Sin internet a mitad del lote - SinConexion, se detiene y ambas siguen PENDIENTE`() = runTest {
+        insertarJornadaPendiente()
+        insertarJornadaPendiente("REG-20261116-XYZ789")
+        fakeApi.excepcionRpc = java.net.UnknownHostException("sin red")
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.SinConexion, result.error)
+        assertEquals(2, result.failedCount)
+        assertEquals("Se detiene tras el primer corte", 1, fakeApi.rpcRecibidas.size)
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, fakeJornadaDao.getJornadaById("REG-20261116-XYZ789")!!.estadoSync)
+    }
+
+    @Test
+    fun `Error 500 - ErrorServidor transitorio y sigue PENDIENTE`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.respuestaRpc = { Response.error(503, "".toResponseBody("text/plain".toMediaType())) }
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.ErrorServidor, result.error)
+        assertEquals(JornadaEntity.SYNC_PENDIENTE, estadoEnRoom())
+    }
+
+    @Test
+    fun `Foto borrada del telefono - ERROR_SYNC con motivo y sin llamar a la RPC`() = runTest {
+        insertarJornadaPendiente()
+        val actual = fakeJornadaDao.getJornadaById(idRegistro)!!
+        fakeJornadaDao.updateJornada(actual.copy(pathFotoLimpio = "/no/existe/limpio.jpg"))
+
+        val result = repository().sincronizarJornadasPendientes()
+
+        assertEquals(ErrorSync.FotoFaltante, result.error)
+        assertEquals(0, fakeApi.rpcRecibidas.size)
+        val enRoom = fakeJornadaDao.getJornadaById(idRegistro)!!
+        assertEquals(JornadaEntity.SYNC_ERROR, enRoom.estadoSync)
+        assertEquals("Falta una foto en el teléfono", enRoom.motivoErrorSync)
+    }
+
+    @Test(expected = kotlinx.coroutines.CancellationException::class)
+    fun `Una cancelacion no se cuenta como error - se propaga`() = runTest {
+        insertarJornadaPendiente()
+        fakeApi.excepcionRpc = kotlinx.coroutines.CancellationException("cancelada")
+        repository().sincronizarJornadasPendientes()
+    }
+
+    @Test
+    fun `Reintentar ignora jornadas ya sincronizadas`() = runTest {
+        insertarJornadaPendiente()
+        fakeJornadaDao.updateEstadoSync(idRegistro, JornadaEntity.SYNC_SINCRONIZADO)
+
+        val result = repository().sincronizarJornada(idRegistro)
+
+        assertEquals(0, result.successCount + result.failedCount)
+        assertEquals(0, fakeApi.rpcRecibidas.size)
     }
 
     @Test
@@ -272,7 +393,7 @@ class JornadaSyncRepositoryTest {
             }
         }
 
-        assertTrue(repository().sincronizarCatalogosMaestros())
+        assertEquals(EstadoServidor.OK, repository().sincronizarCatalogosMaestros())
 
         assertEquals(HerramientaCatalogoEntity.ESTADO_DANADO, fakeCatalogoDao.getHerramientaByQr("INV-02-PINZA-03")!!.estado)
         assertEquals(HerramientaCatalogoEntity.ESTADO_EXTRAVIADO, fakeCatalogoDao.getHerramientaByQr("INV-02-PINZA-01")!!.estado)
@@ -285,18 +406,25 @@ class JornadaSyncRepositoryTest {
         var respuestaFoto: (String) -> Response<Unit> = { Response.success(Unit) }
         var respuestaRpc: (SincronizarJornadaRequest) -> Response<String> =
             { Response.success(JornadaSyncRepository.RPC_INSERTADA) }
+        var excepcionRpc: Exception? = null
+        /** (código HTTP, cuerpo) que responden los 4 catálogos; null = OK. */
+        var errorCatalogo: Pair<Int, String>? = null
+
+        private fun <T> catalogo(ok: T): Response<T> = errorCatalogo
+            ?.let { (code, cuerpo) -> Response.error(code, cuerpo.toResponseBody("application/json".toMediaType())) }
+            ?: Response.success(ok)
 
         override suspend fun getHerramientasCatalogo(select: String): Response<List<HerramientaCatalogoEntity>> =
-            Response.success(herramientasRemotas)
+            catalogo(herramientasRemotas)
 
         override suspend fun getTiposBasuraCatalogo(select: String): Response<List<TipoBasuraCatalogoEntity>> =
-            Response.success(emptyList())
+            catalogo(emptyList())
 
         override suspend fun getPlayasCatalogo(select: String): Response<List<PlayaCatalogoEntity>> =
-            Response.success(emptyList())
+            catalogo(emptyList())
 
         override suspend fun getSectoresCatalogo(select: String): Response<List<SectorCatalogoEntity>> =
-            Response.success(emptyList())
+            catalogo(emptyList())
 
         override suspend fun uploadEvidencePhoto(
             bucket: String,
@@ -310,6 +438,7 @@ class JornadaSyncRepositoryTest {
 
         override suspend fun sincronizarJornada(request: SincronizarJornadaRequest): Response<String> {
             rpcRecibidas += request
+            excepcionRpc?.let { throw it }
             return respuestaRpc(request)
         }
     }

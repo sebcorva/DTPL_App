@@ -107,6 +107,8 @@ flowchart LR
   * 🟡 **Amarillo:** "N pendientes · sin internet".
   * 🟢 **Verde:** "N listas para sincronizar". Solo en este estado se puede tocar: sincroniza (§5) y muestra el resultado unos segundos.
   * "Sincronizando…" con indicador de carga mientras envía.
+  * Éxito: check animado + sonido + vibración, sin texto. Error: ícono rojo y mensaje simple ~4 s (ej. "Sin conexión estable. Tus jornadas siguen guardadas.").
+  * "Servidor en mantención" (gris, sin sincronizar) si Supabase responde PGRST202/205; "N jornada(s) rechazada(s) · revisar en Reportes" (rojo) si hay rechazadas y ninguna pendiente (ISSUE-42).
   * Si una jornada **no** se pudo enviar (red, error del servidor o **APK sin configuración de nube**), permanece `PENDIENTE_SYNC` y el mensaje lo explica. El botón nunca pasa a Gris por una sincronización que no ocurrió.
 
 ### RF-P2: Pantalla 2 — Conformación de Brigada (nombres escritos a mano)
@@ -157,7 +159,8 @@ flowchart LR
 * **Card 1 — Basura normal:** `Entregado a camión DIMAO` / `Pendiente de retiro` / `No aplicable`, más el campo opcional **`N° Guía de Despacho`** (solo visible con "Entregado a camión DIMAO").
 * **Card 2 — Basura reciclable:** `Entregado a Punto Limpio Municipal` / `Entregado a Reciclador de Base` / `Pendiente de entrega` / `No aplicable`.
 * **Coherencia:** si los kg de un tipo son 0, la única opción es `No aplicable`; si son > 0, `No aplicable` no está disponible.
-* **`[ Guardar ]`:** marca la jornada como `PENDIENTE_SYNC` y avanza a **P10**.
+* **`[ Guardar ]`:** valida la jornada completa con las mismas reglas de la RPC (`ValidadorJornada`, ISSUE-42); si algo falla, avisa y no la cierra. Si todo está bien, la marca como `PENDIENTE_SYNC` y avanza a **P10**.
+* **Jornadas rechazadas:** si la RPC rechaza una jornada, pasa a `ERROR_SYNC` con el motivo; **nunca se edita** (evita falsificación) y en Reportes solo puede **reintentarse** con los mismos datos. El rechazo queda registrado en Supabase (`jornada_rechazada`).
 
 ### RF-P10: Pantalla 10 — Resumen de Impacto (Instagram)
 * Funciona **sin internet**: la imagen se genera en el teléfono a partir de los datos de Room.

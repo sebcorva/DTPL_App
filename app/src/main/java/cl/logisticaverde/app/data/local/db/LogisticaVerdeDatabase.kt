@@ -23,8 +23,10 @@ import kotlinx.coroutines.launch
  * Política de migraciones (ISSUE-17, RNF-06):
  * - v1/v2 → v3 fue destructiva (se eliminó la tabla `usuario`).
  * - v3 → v4 también es destructiva, por decisión del 31-10-2026 (playas, brigada, fecha de jornada;
- *   los datos locales eran de prueba). Es la ÚLTIMA vez: el piloto parte con la v4.
- * - Desde la v4, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
+ *   los datos locales eran de prueba).
+ * - v4 → v5 también es destructiva, por decisión del 31-10-2026 (ISSUE-42: `motivo_error_sync`;
+ *   aún no hay datos reales). Es la ÚLTIMA vez: el piloto parte con la v5.
+ * - Desde la v5, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
  *   explícita en [MIGRACIONES] y un test con `MigrationTestHelper` contra `app/schemas/`.
  *   Nunca volver a usar `fallbackToDestructiveMigration()`: borraría jornadas sin sincronizar.
  */
@@ -39,7 +41,7 @@ import kotlinx.coroutines.launch
         HerramientaJornadaEntity::class,
         BasuraRecolectadaEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class LogisticaVerdeDatabase : RoomDatabase() {
@@ -75,7 +77,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
                         }
                     })
                     .addMigrations(*MIGRACIONES)
-                    .fallbackToDestructiveMigrationFrom(1, 2, 3)
+                    .fallbackToDestructiveMigrationFrom(1, 2, 3, 4)
                     .build()
 
                 INSTANCE = instance

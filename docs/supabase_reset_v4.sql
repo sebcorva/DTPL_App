@@ -21,7 +21,9 @@ DROP VIEW IF EXISTS public.vista_reporte_jornadas;
 DROP VIEW IF EXISTS public.vista_densidad_diaria;
 
 DROP FUNCTION IF EXISTS public.sincronizar_jornada(jsonb);
+DROP FUNCTION IF EXISTS public.sincronizar_jornada_interna(jsonb);
 
+DROP TABLE IF EXISTS public.jornada_rechazada CASCADE;
 DROP TABLE IF EXISTS public.basura_recolectada CASCADE;
 DROP TABLE IF EXISTS public.herramienta_jornada CASCADE;
 DROP TABLE IF EXISTS public.participante_jornada CASCADE;

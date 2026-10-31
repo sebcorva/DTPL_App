@@ -62,8 +62,19 @@ interface JornadaDao {
     )
     suspend fun updateCoordenadaInicialSiVacia(idRegistro: String, lat: Double, lng: Double)
 
-    @Query("UPDATE jornada SET estado_sync = :nuevoEstado WHERE id_registro = :idRegistro")
+    /** Cambia el estado y borra el motivo de rechazo anterior (si lo había). */
+    @Query("UPDATE jornada SET estado_sync = :nuevoEstado, motivo_error_sync = NULL WHERE id_registro = :idRegistro")
     suspend fun updateEstadoSync(idRegistro: String, nuevoEstado: String)
+
+    // --- JORNADAS RECHAZADAS (ISSUE-42) ---
+    @Query("UPDATE jornada SET estado_sync = 'ERROR_SYNC', motivo_error_sync = :motivo WHERE id_registro = :idRegistro")
+    suspend fun marcarErrorSync(idRegistro: String, motivo: String)
+
+    @Query("SELECT * FROM jornada WHERE estado_sync = 'ERROR_SYNC' ORDER BY hora_inicio_ms DESC")
+    fun observeJornadasRechazadas(): Flow<List<JornadaEntity>>
+
+    @Query("SELECT COUNT(*) FROM jornada WHERE estado_sync = 'ERROR_SYNC'")
+    fun observeRechazadasCount(): Flow<Int>
 
     // --- PARTICIPANTES DE LA JORNADA (Pantallas 2 y 8) ---
     @Query("SELECT * FROM participante_jornada WHERE id_registro = :idRegistro ORDER BY id ASC")
@@ -94,7 +105,7 @@ interface JornadaDao {
         """
         SELECT DISTINCT hj.qr_codigo FROM herramienta_jornada hj
         JOIN jornada j ON j.id_registro = hj.id_registro
-        WHERE j.estado_sync IN ('EN_CURSO', 'PENDIENTE_SYNC')
+        WHERE j.estado_sync IN ('EN_CURSO', 'PENDIENTE_SYNC', 'ERROR_SYNC')
         """
     )
     suspend fun getQrHerramientasNoSincronizadas(): List<String>

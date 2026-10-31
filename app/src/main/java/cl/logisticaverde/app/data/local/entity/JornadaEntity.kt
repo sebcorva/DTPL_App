@@ -158,13 +158,19 @@ data class JornadaEntity(
     val destinoBasuraReciclable: String = DESTINO_RECICLABLE_PUNTO_LIMPIO,
 
     @ColumnInfo(name = "estado_sync")
-    val estadoSync: String = SYNC_EN_CURSO
+    val estadoSync: String = SYNC_EN_CURSO,
+
+    // ISSUE-42: motivo del rechazo (solo con estado ERROR_SYNC). Solo local: no viaja a Supabase.
+    @ColumnInfo(name = "motivo_error_sync")
+    val motivoErrorSync: String? = null
 ) {
     companion object {
         // Estados de sincronización local
         const val SYNC_EN_CURSO = "EN_CURSO"
         const val SYNC_PENDIENTE = "PENDIENTE_SYNC"
         const val SYNC_SINCRONIZADO = "SINCRONIZADO"
+        // ISSUE-42: el servidor la rechazó (o falta una foto). No se edita; solo "Reintentar".
+        const val SYNC_ERROR = "ERROR_SYNC"
 
         // Opciones de Entrega para Basura Normal (Pantalla 9)
         const val DESTINO_NORMAL_DIMAO = "Entregado a camión DIMAO"

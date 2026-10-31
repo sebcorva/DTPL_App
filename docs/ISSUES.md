@@ -268,20 +268,32 @@
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 
-### `[ISSUE-42]` 🛡️ Manejo de excepciones y mensajes de error · ~1 d (antes del piloto)
+### `[ISSUE-42]` ✅ Manejo de excepciones y mensajes de error · ~1,5 d
 * **Origen (31-10-2026):** la sincronización falló con `HTTP 404 … Could not find the function public.sincronizar_jornada(p) in the schema cache` (PGRST202; los catálogos con PGRST205). Causa: en Supabase se ejecutó el reset v4 pero no `supabase_schema.sql` (o PostgREST no recargó su caché). La app no perdió datos (las jornadas siguen `PENDIENTE_SYNC`), pero mostró al líder un mensaje técnico y la descarga de catálogos falló **en silencio**.
-* **Criterios de aceptación:**
-  - [ ] **Errores tipados** en `JornadaSyncRepository` (`sealed class ErrorSync`): sin internet / tiempo agotado, servidor no preparado (PGRST202/PGRST205, 404), no autorizado (401/403), jornada rechazada por validación de la RPC (`P0001` con el mensaje de la regla), error del servidor (5xx), foto local faltante, desconocido.
-  - [ ] **Transitorio vs. permanente:** los transitorios se reintentan (base para ISSUE-37 WorkManager); un rechazo de validación **no** se reintenta en bucle: la jornada pasa a un estado `ERROR_SYNC` con el motivo guardado, visible en Reportes, con opción "Reintentar".
-  - [ ] **Mensajes para el líder en lenguaje simple** (ej. "El servidor no está listo. Avisa a la coordinación. Tus datos siguen guardados en el teléfono."); el detalle técnico (código HTTP, código PostgREST, `id_registro`) va solo al log.
-  - [ ] **Catálogos:** `sincronizarCatalogosMaestros()` deja de tragarse el error (`catch (_: Exception) → false`); registra el motivo y, si falla, la app sigue con el catálogo local sin bloquear.
-  - [ ] **`CancellationException`:** los `catch (e: Exception)` dentro de corrutinas la vuelven a lanzar (hoy la capturan y cuentan una cancelación como error).
-  - [ ] **ViewModels:** los `viewModelScope.launch` que escriben en Room (P2–P9) atrapan errores de E/S y muestran un mensaje en vez de cerrar la app; revisar también cámara/compresión (`ImageCompressor`), escáner QR, servicio GPS y guardado/compartir de la P10.
-  - [ ] **Log centralizado** sin datos personales (sin nombres ni coordenadas); `HttpLoggingInterceptor` sigue solo en debug y nivel `BASIC` (ya es así: no expone la clave).
-  - [ ] **Diagnóstico previo al piloto:** al iniciar, si Supabase responde PGRST202/205 se muestra en la tarjeta de sincronización "Servidor en mantención" en vez de "N listas para sincronizar".
-  - [ ] Opcional, a decidir: reporte de cierres inesperados (p. ej. Firebase Crashlytics, gratuito) para el piloto.
-  - [ ] Tests unitarios por cada tipo de error (404 PGRST202, 400 P0001, 401, 500, timeout, cancelación).
+> **Decisiones del 31-10-2026:**
+> 1. Las jornadas rechazadas por la RPC pasan a `ERROR_SYNC` con el motivo guardado (`motivo_error_sync`); **además, la app valida antes de cerrar la jornada con las mismas reglas de la RPC** para que el rechazo no llegue a ocurrir.
+> 2. Una jornada cerrada **nunca se edita** (evita falsificación). Solo "Reintentar", que reenvía exactamente los mismos datos (útil cuando el problema estaba en el servidor/catálogo).
+> 3. Room v5 **sin migración** (destructiva desde v4: aún no hay datos reales). Supabase: reset + esquema con la nueva tabla `jornada_rechazada`.
+> 4. Mensajes en lenguaje simple, mencionando al **administrador**; se muestran ~4 s en la línea de estado de la tarjeta de sincronización.
+> 5. Si el servidor responde PGRST202/205: "Servidor en mantención" fijo y sin sincronizar.
+> 6. Sin Crashlytics por ahora. 7. Errores en P2–P9: aviso corto abajo y se queda en la pantalla. 8. Solo `Log` de Android, sin nombres ni coordenadas.
+> **Vista del reintento:** las rechazadas no cuentan como pendientes; la P1 muestra "N jornada(s) rechazada(s) · revisar en Reportes" (si no hay pendientes) y Reportes lleva un globo rojo; en Reportes las rechazadas van siempre arriba con el motivo y `[ Reintentar ]` (con internet envía en el momento con la misma animación; sin internet pasa a pendiente).
+> **`jornada_rechazada` (Supabase):** copia de solo lectura de cada rechazo (payload, motivo, intentos, fecha) para que el administrador lo vea; se marca resuelta si luego la jornada entra.
 
+* **Criterios de aceptación:**
+  - [x] **Validación previa** al cerrar en P9 (`ValidadorJornada`, mismas reglas que la RPC).
+  - [x] **Errores tipados** en `JornadaSyncRepository` (`sealed class ErrorSync`): sin internet / tiempo agotado, servidor no preparado (PGRST202/PGRST205, 404), no autorizado (401/403), jornada rechazada por validación de la RPC (`P0001` con el mensaje de la regla), error del servidor (5xx), foto local faltante, desconocido.
+  - [x] **Transitorio vs. permanente:** los transitorios se reintentan (base para ISSUE-37 WorkManager); un rechazo de validación **no** se reintenta en bucle: la jornada pasa a un estado `ERROR_SYNC` con el motivo guardado, visible en Reportes, con opción "Reintentar".
+  - [x] **Mensajes para el líder en lenguaje simple** (ej. "El servidor no está listo. Avisa a la coordinación. Tus datos siguen guardados en el teléfono."); el detalle técnico (código HTTP, código PostgREST, `id_registro`) va solo al log.
+  - [x] **Catálogos:** `sincronizarCatalogosMaestros()` deja de tragarse el error (`catch (_: Exception) → false`); registra el motivo y, si falla, la app sigue con el catálogo local sin bloquear.
+  - [x] **`CancellationException`:** los `catch (e: Exception)` dentro de corrutinas la vuelven a lanzar (hoy la capturan y cuentan una cancelación como error).
+  - [x] **ViewModels:** los `viewModelScope.launch` que escriben en Room (P2–P9) atrapan errores de E/S y muestran un mensaje en vez de cerrar la app; revisar también cámara/compresión (`ImageCompressor`), escáner QR, servicio GPS y guardado/compartir de la P10.
+  - [x] **Log centralizado** sin datos personales (sin nombres ni coordenadas); `HttpLoggingInterceptor` sigue solo en debug y nivel `BASIC` (ya es así: no expone la clave).
+  - [x] **Diagnóstico previo al piloto:** al iniciar, si Supabase responde PGRST202/205 se muestra en la tarjeta de sincronización "Servidor en mantención" en vez de "N listas para sincronizar".
+  - [x] ~~Crashlytics~~: decidido no usarlo por ahora (se evalúa después del piloto).
+  - [x] Tests unitarios por cada tipo de error (404 PGRST202, 400 P0001, 401, 500, timeout, cancelación).
+
+* **Notas de cierre (31-10-2026):** 56 tests unitarios en verde (18 de sincronización, 11 de `ValidadorJornada`, 21 de reglas, 6 de resumen). SQL probado en Postgres 15 local: instalación, reset y reinstalación sin errores; 34 casos OK (19 rechazos → `RECHAZADA: …`, registro con `intentos`, `resuelta` tras reintento, casts inválidos, anon sin acceso a `jornada_rechazada` ni a la función interna). Verificado en emulador: P1 con jornada rechazada (texto + globo) y Reportes con `[ Reintentar ]`. **Pendiente del usuario:** ejecutar `supabase_reset_v4.sql` + `supabase_schema.sql` (incluye `NOTIFY pgrst`), y probar "Reintentar" contra Supabase.
 ---
 
 ## Orden y Estimación

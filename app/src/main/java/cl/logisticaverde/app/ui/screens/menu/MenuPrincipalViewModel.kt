@@ -1,17 +1,20 @@
 package cl.logisticaverde.app.ui.screens.menu
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import cl.logisticaverde.app.data.local.db.JornadaDao
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
+import cl.logisticaverde.app.data.repository.EstadoServidor
 import cl.logisticaverde.app.data.repository.JornadaSyncRepository
+import cl.logisticaverde.app.domain.sync.ErrorSync
 import cl.logisticaverde.app.domain.util.NetworkMonitor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -25,40 +28,58 @@ enum class SyncButtonState {
     GRIS_SIN_DATOS,
     AMARILLO_SIN_INTERNET,
     VERDE_LISTO_PARA_SYNC,
-    SINCRONIZANDO
+    SINCRONIZANDO,
+    // ISSUE-42: el servidor responde PGRST202/205 (SQL sin ejecutar): no se intenta sincronizar
+    MANTENCION
 }
 
-/** Resultado de la última sincronización: la P1 lo muestra con animación + sonido, sin texto. */
-enum class ResultadoSync { EXITO, ERROR }
+/** Resultado de la última sincronización: éxito = animación + sonido; error = ícono rojo + texto ~4 s. */
+sealed interface ResultadoSync {
+    data object Exito : ResultadoSync
+    data class Error(val mensaje: String) : ResultadoSync
+}
 
 data class MenuPrincipalUiState(
     val jornadaEnCurso: JornadaEntity? = null,
     val pendingSyncCount: Int = 0,
     val isOnline: Boolean = false,
     val syncButtonState: SyncButtonState = SyncButtonState.GRIS_SIN_DATOS,
-    val resultadoSync: ResultadoSync? = null
+    val resultadoSync: ResultadoSync? = null,
+    // ISSUE-42
+    val rechazadasCount: Int = 0,
+    val servidorEnMantencion: Boolean = false
 )
 
 class MenuPrincipalViewModel(
     jornadaDao: JornadaDao,
     private val syncRepository: JornadaSyncRepository,
-    networkMonitor: NetworkMonitor
+    networkMonitor: NetworkMonitor,
+    private val reloj: () -> Long = { System.currentTimeMillis() }
 ) : ViewModel() {
 
     private val _isSyncing = MutableStateFlow(false)
     private val _resultadoSync = MutableStateFlow<ResultadoSync?>(null)
+    private val _mantencion = MutableStateFlow(false)
+    private var ultimaRevisionMs = 0L
+
+    private val conteos = combine(
+        jornadaDao.observePendingSyncCount(),
+        jornadaDao.observeRechazadasCount(),
+        _mantencion
+    ) { pendientes, rechazadas, mantencion -> Triple(pendientes, rechazadas, mantencion) }
 
     val uiState: StateFlow<MenuPrincipalUiState> = combine(
         jornadaDao.observeJornadaEnCurso(),
-        jornadaDao.observePendingSyncCount(),
+        conteos,
         networkMonitor.isOnline,
         _isSyncing,
         _resultadoSync
-    ) { jornadaEnCurso, pendingCount, isOnline, isSyncing, resultado ->
+    ) { jornadaEnCurso, (pendingCount, rechazadas, mantencion), isOnline, isSyncing, resultado ->
         val buttonState = when {
             isSyncing -> SyncButtonState.SINCRONIZANDO
             pendingCount == 0 -> SyncButtonState.GRIS_SIN_DATOS
             !isOnline -> SyncButtonState.AMARILLO_SIN_INTERNET
+            mantencion -> SyncButtonState.MANTENCION
             else -> SyncButtonState.VERDE_LISTO_PARA_SYNC
         }
         MenuPrincipalUiState(
@@ -66,7 +87,9 @@ class MenuPrincipalViewModel(
             pendingSyncCount = pendingCount,
             isOnline = isOnline,
             syncButtonState = buttonState,
-            resultadoSync = resultado
+            resultadoSync = resultado,
+            rechazadasCount = rechazadas,
+            servidorEnMantencion = mantencion
         )
     }.stateIn(
         scope = viewModelScope,
@@ -75,9 +98,26 @@ class MenuPrincipalViewModel(
     )
 
     init {
-        // Si hay internet al abrir el menú, refresca silenciosamente los catálogos maestros desde Supabase
+        // Al abrir el menú y cada vez que vuelve internet: refresca catálogos y revisa si el servidor está listo
         viewModelScope.launch {
-            syncRepository.sincronizarCatalogosMaestros()
+            networkMonitor.isOnline.distinctUntilChanged().filter { it }.collect { revisarServidor(forzar = true) }
+        }
+    }
+
+    /**
+     * Descarga catálogos y actualiza "Servidor en mantención" (PGRST202/205).
+     * La P1 lo llama al volver a primer plano; como máximo una vez cada 30 s.
+     */
+    fun revisarServidor(forzar: Boolean = false) {
+        val ahora = reloj()
+        if (!forzar && ahora - ultimaRevisionMs < INTERVALO_REVISION_MS) return
+        ultimaRevisionMs = ahora
+        viewModelScope.launch {
+            when (syncRepository.sincronizarCatalogosMaestros()) {
+                EstadoServidor.NO_PREPARADO -> _mantencion.value = true
+                EstadoServidor.OK -> _mantencion.value = false
+                else -> Unit // sin internet u otro error: no se sabe, se mantiene lo último conocido
+            }
         }
     }
 
@@ -89,12 +129,18 @@ class MenuPrincipalViewModel(
             _resultadoSync.value = null
             _isSyncing.value = true
 
-            val result = syncRepository.sincronizarJornadasPendientes()
+            val result = try {
+                syncRepository.sincronizarJornadasPendientes()
+            } finally {
+                _isSyncing.value = false
+            }
 
-            _isSyncing.value = false
-            // El detalle queda en el log; al líder solo se le muestra la animación (ISSUE-42 definirá los textos de error)
-            if (result.failedCount > 0) Log.w(TAG, result.message)
-            _resultadoSync.value = if (result.failedCount == 0) ResultadoSync.EXITO else ResultadoSync.ERROR
+            if (result.error == ErrorSync.ServidorNoPreparado) _mantencion.value = true
+            if (result.successCount > 0) _mantencion.value = false
+            _resultadoSync.value = when {
+                result.error == null -> ResultadoSync.Exito
+                else -> ResultadoSync.Error(result.message)
+            }
         }
     }
 
@@ -104,7 +150,7 @@ class MenuPrincipalViewModel(
     }
 
     private companion object {
-        const val TAG = "MenuPrincipal"
+        const val INTERVALO_REVISION_MS = 30_000L
     }
 
     class Factory(

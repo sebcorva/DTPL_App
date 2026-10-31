@@ -16,7 +16,14 @@ import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
 import cl.logisticaverde.app.domain.reglas.FechaJornada
 import cl.logisticaverde.app.domain.reglas.TopesJornada
 import cl.logisticaverde.app.domain.util.ImageCompressor
+import cl.logisticaverde.app.domain.reglas.ValidadorJornada
+import cl.logisticaverde.app.domain.sync.RegistroErrores
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -205,6 +212,20 @@ class JornadaFlujoViewModel(
     private val _uiState = MutableStateFlow(EquipoSeleccionUiState())
     val uiState: StateFlow<EquipoSeleccionUiState> = _uiState.asStateFlow()
 
+    /**
+     * ISSUE-42: avisos cortos para el líder (se muestran abajo de la pantalla). Un error al guardar
+     * en Room, comprimir una foto, etc. no cierra la app: se registra, se avisa y el líder se queda
+     * en la misma pantalla (la navegación de esa acción no ocurre).
+     */
+    private val _avisos = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    val avisos: SharedFlow<String> = _avisos.asSharedFlow()
+
+    private val manejadorErrores = CoroutineExceptionHandler { _, error ->
+        RegistroErrores.advertencia(TAG, "Error en el flujo de jornada", error)
+        _uiState.update { it.copy(isSavingPhoto = false) }
+        _avisos.tryEmit(AVISO_ERROR_GUARDADO)
+    }
+
     val playasCatalogo: StateFlow<List<PlayaCatalogoEntity>> = catalogoDao.observePlayas()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -273,7 +294,7 @@ class JornadaFlujoViewModel(
 
     /** ISSUE-23: los km los escribe LimpiezaLocationService en Room; la UI solo los refleja. */
     private fun observarKmDesdeRoom() {
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             _uiState
                 .map { it.idRegistroActivo }
                 .distinctUntilChanged()
@@ -287,7 +308,7 @@ class JornadaFlujoViewModel(
     }
 
     fun cargarJornadaEnCursoSiExiste() {
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val enCurso = jornadaDao.observeJornadaEnCurso().firstOrNull()
             if (enCurso != null) {
                 // Se reconstruye desde las tablas, no comparando nombres en los CSV
@@ -407,7 +428,7 @@ class JornadaFlujoViewModel(
     fun guardarPantalla2Equipo(onSuccessNavigateToP3: () -> Unit) {
         if (!_uiState.value.esEquipoValido) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val idRegistro = equipoMutex.withLock { persistirEquipo() } ?: return@launch
             val actual = jornadaDao.getJornadaById(idRegistro) ?: return@launch
             // Si se volvió atrás desde una pantalla posterior, no retroceder pantalla_actual
@@ -418,7 +439,7 @@ class JornadaFlujoViewModel(
 
     /** RNF-01: cada alta, baja o cambio de P2 queda en Room de inmediato. */
     private fun persistirEquipoEnSegundoPlano() {
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             equipoMutex.withLock { persistirEquipo() }
         }
     }
@@ -554,7 +575,7 @@ class JornadaFlujoViewModel(
     /** Lee la jornada activa de Room, aplica el cambio y la guarda (RNF-01). */
     private fun actualizarJornadaEnSegundoPlano(cambio: (JornadaEntity) -> JornadaEntity) {
         val idRegistro = _uiState.value.idRegistroActivo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actual = jornadaDao.getJornadaById(idRegistro) ?: return@launch
             jornadaDao.updateJornada(cambio(actual))
         }
@@ -562,7 +583,7 @@ class JornadaFlujoViewModel(
 
     fun procesarFotoInicioCapturada(context: Context, tempFile: File) {
         val idRegistro = _uiState.value.idRegistroActivo ?: "TEMP"
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             _uiState.update { it.copy(isSavingPhoto = true) }
             val compressedPath = ImageCompressor.compressAndSaveEvidencePhoto(
                 context = context,
@@ -593,7 +614,7 @@ class JornadaFlujoViewModel(
         if (state.selectedSectoresIds.isEmpty()) return
         if (!state.fotoInicioResuelta) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             // Solo sectores de la playa elegida en P2
             val todosSectores = catalogoDao.observeSectores().firstOrNull().orEmpty()
             val sectoresElegidos = todosSectores
@@ -630,7 +651,7 @@ class JornadaFlujoViewModel(
         val codigoLimpio = rawQrCode.trim().uppercase()
         if (codigoLimpio.isEmpty()) return
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val catalogoItem = catalogoDao.getHerramientaByQr(codigoLimpio)
             if (catalogoItem == null) {
                 _uiState.update {
@@ -673,7 +694,7 @@ class JornadaFlujoViewModel(
     }
 
     fun eliminarHerramientaAgregada(id: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             jornadaDao.deleteHerramientaJornadaById(id)
         }
     }
@@ -685,7 +706,7 @@ class JornadaFlujoViewModel(
     fun toggleSinHerramientas(sinHerramientas: Boolean) {
         val idRegistro = _uiState.value.idRegistroActivo ?: return
         _uiState.update { it.copy(sinHerramientas = sinHerramientas, qrFeedbackMessage = null) }
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             if (sinHerramientas) jornadaDao.deleteHerramientasJornada(idRegistro)
             val actual = jornadaDao.getJornadaById(idRegistro) ?: return@launch
             jornadaDao.updateJornada(actual.copy(sinHerramientas = sinHerramientas))
@@ -695,7 +716,7 @@ class JornadaFlujoViewModel(
     fun guardarPantalla4Herramientas(onSuccessNavigateToP5: () -> Unit) {
         val idRegistro = _uiState.value.idRegistroActivo ?: return
         val sinHerramientas = _uiState.value.sinHerramientas
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actuales = jornadaDao.getHerramientasJornadaList(idRegistro)
             if (actuales.isEmpty() && !sinHerramientas) return@launch
             jornadaDao.updatePantallaActual(idRegistro, 5)
@@ -716,7 +737,7 @@ class JornadaFlujoViewModel(
             )
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actual = jornadaDao.getJornadaById(idRegistro)
             if (actual != null && actual.horaInicioMs == 0L) {
                 jornadaDao.updateJornada(actual.copy(horaInicioMs = ahoraMs))
@@ -727,7 +748,7 @@ class JornadaFlujoViewModel(
     fun modificarConteoBasura(idTipoBasura: String, delta: Int) {
         if (!_uiState.value.isLimpiezaIniciada) return
         val idRegistro = _uiState.value.idRegistroActivo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             jornadaDao.modificarCantidadBasura(
                 idRegistro = idRegistro,
                 idTipoBasura = idTipoBasura,
@@ -747,7 +768,7 @@ class JornadaFlujoViewModel(
         val finMs = minOf(reloj(), state.horaInicioMs + TopesJornada.MAX_DURACION_MS)
         _uiState.update { it.copy(horaFinMs = finMs) }
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actual = jornadaDao.getJornadaById(idRegistro)
             if (actual != null) {
                 jornadaDao.updateJornada(
@@ -805,7 +826,7 @@ class JornadaFlujoViewModel(
 
     fun procesarFotoLimpioCapturada(context: Context, tempFile: File) {
         val idRegistro = _uiState.value.idRegistroActivo ?: "TEMP"
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             _uiState.update { it.copy(isSavingPhoto = true) }
             val compressedPath = ImageCompressor.compressAndSaveEvidencePhoto(
                 context = context,
@@ -830,7 +851,7 @@ class JornadaFlujoViewModel(
 
     fun procesarFotoSacosCapturada(context: Context, tempFile: File) {
         val idRegistro = _uiState.value.idRegistroActivo ?: "TEMP"
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             _uiState.update { it.copy(isSavingPhoto = true) }
             val compressedPath = ImageCompressor.compressAndSaveEvidencePhoto(
                 context = context,
@@ -866,7 +887,7 @@ class JornadaFlujoViewModel(
         val sacosOmitida = state.pathFotoSacos.isBlank()
         val siguiente = if (state.sinHerramientas) 8 else 7
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actual = jornadaDao.getJornadaById(idRegistro)
             if (actual != null) {
                 jornadaDao.updateJornada(
@@ -885,7 +906,7 @@ class JornadaFlujoViewModel(
 
     // --- PANTALLA 7: Estado de Herramientas Ingresadas ---
     fun actualizarEstadoHerramienta(herramienta: HerramientaJornadaEntity, nuevoEstado: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             jornadaDao.updateEstadoHerramientaJornada(herramienta.id, nuevoEstado)
             catalogoDao.updateEstadoHerramientaCatalogo(herramienta.qrCodigo, nuevoEstado)
         }
@@ -893,7 +914,7 @@ class JornadaFlujoViewModel(
 
     fun guardarPantalla7EstadoHerramientas(onSuccessNavigateToP8: () -> Unit) {
         val idRegistro = _uiState.value.idRegistroActivo ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             jornadaDao.updatePantallaActual(idRegistro, 8)
             onSuccessNavigateToP8()
         }
@@ -997,7 +1018,7 @@ class JornadaFlujoViewModel(
             )
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(manejadorErrores) {
             val actual = jornadaDao.getJornadaById(idRegistro)
             if (actual != null) {
                 jornadaDao.updateJornada(
@@ -1066,21 +1087,37 @@ class JornadaFlujoViewModel(
             null
         }
 
-        viewModelScope.launch {
-            val actual = jornadaDao.getJornadaById(idRegistro)
-            if (actual != null) {
-                jornadaDao.updateJornada(
-                    actual.copy(
-                        destinoBasuraNormal = state.destinoBasuraNormal,
-                        nroGuiaDespacho = guiaFinal,
-                        destinoBasuraReciclable = state.destinoBasuraReciclable,
-                        estadoSync = JornadaEntity.SYNC_PENDIENTE
-                    )
-                )
+        viewModelScope.launch(manejadorErrores) {
+            val actual = jornadaDao.getJornadaById(idRegistro) ?: return@launch
+            val cerrada = actual.copy(
+                destinoBasuraNormal = state.destinoBasuraNormal,
+                nroGuiaDespacho = guiaFinal,
+                destinoBasuraReciclable = state.destinoBasuraReciclable
+            )
+            // ISSUE-42: mismas reglas que la RPC, para que el servidor no la rechace después
+            val problemas = ValidadorJornada.validar(
+                jornada = cerrada,
+                participantes = jornadaDao.getParticipantesList(idRegistro),
+                herramientas = jornadaDao.getHerramientasJornadaList(idRegistro),
+                basura = jornadaDao.getBasuraRecolectadaList(idRegistro),
+                sectoresCatalogo = catalogoDao.getSectoresList(),
+                herramientasCatalogo = catalogoDao.observeHerramientasCatalogo().first(),
+                ahoraMs = reloj()
+            )
+            if (problemas.isNotEmpty()) {
+                RegistroErrores.advertencia(TAG, "$idRegistro no se cierra: ${problemas.joinToString("; ")}")
+                _avisos.tryEmit("No se puede cerrar la jornada: ${problemas.first()}.")
+                return@launch
             }
+            jornadaDao.updateJornada(cerrada.copy(estadoSync = JornadaEntity.SYNC_PENDIENTE))
             _uiState.value = EquipoSeleccionUiState()
             onJornadaCerrada(idRegistro)
         }
+    }
+
+    companion object {
+        private const val TAG = "JornadaFlujo"
+        const val AVISO_ERROR_GUARDADO = "No se pudo guardar. Intenta de nuevo."
     }
 
     class Factory(

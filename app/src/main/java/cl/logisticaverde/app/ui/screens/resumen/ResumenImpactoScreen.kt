@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cl.logisticaverde.app.domain.resumen.ResumenImpacto
+import cl.logisticaverde.app.domain.sync.RegistroErrores
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,7 +87,12 @@ private fun ContenidoResumen(resumen: ResumenImpacto, modifier: Modifier) {
     var ocupado by remember { mutableStateOf(false) }
 
     LaunchedEffect(resumen) {
-        bitmap = withContext(Dispatchers.Default) { ResumenImpactoGenerator.generar(context, resumen) }
+        bitmap = withContext(Dispatchers.Default) {
+            runCatching { ResumenImpactoGenerator.generar(context, resumen) }
+                .onFailure { RegistroErrores.advertencia("ResumenImpacto", "No se pudo generar la tarjeta", it) }
+                .getOrNull()
+        }
+        if (bitmap == null) mensaje = "No se pudo generar la imagen del resumen."
     }
 
     fun guardar() {

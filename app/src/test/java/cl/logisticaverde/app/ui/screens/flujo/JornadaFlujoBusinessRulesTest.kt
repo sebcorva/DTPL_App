@@ -376,6 +376,24 @@ class JornadaFlujoBusinessRulesTest {
         assertEquals("Diego", saved.encargadoPesaje)
     }
 
+    /** Deja la jornada con lo que en el flujo real completan P3–P7, para que pase el ValidadorJornada. */
+    private suspend fun completarParaCierre(idRegistro: String) {
+        val ahora = System.currentTimeMillis()
+        fakeJornadaDao.deleteHerramientasJornada(idRegistro)
+        val actual = fakeJornadaDao.getJornadaById(idRegistro)!!
+        fakeJornadaDao.updateJornada(
+            actual.copy(
+                sectoresIdsCsv = "SECTOR-01",
+                horaInicioMs = ahora - 60_000,
+                horaFinMs = ahora,
+                sinHerramientas = true,
+                pathFotoInicio = "", motivoOmisionInicio = "Prueba",
+                pathFotoLimpio = "", motivoOmisionLimpio = "Prueba",
+                pathFotoSacos = "", motivoOmisionSacos = "Prueba"
+            )
+        )
+    }
+
     @Test
     fun `Regla Pantallas 8 y 9 - Coherencia automatica de No aplicable cuando peso es 0 kg y limpieza de Guia Despacho`() = runTest {
         iniciarJornadaHastaPantalla3()
@@ -421,7 +439,19 @@ class JornadaFlujoBusinessRulesTest {
 
         // 5. Al guardar la jornada, en Room queda PENDIENTE_SYNC y nroGuiaDespacho = null
         val idRegistro = viewModel.uiState.value.idRegistroActivo!!
+
+        // ISSUE-42: con datos incompletos (sin limpieza ni fotos) la jornada NO se cierra y se avisa
+        val avisos = mutableListOf<String>()
+        val recolector = backgroundScope.launch(testDispatcher) { viewModel.avisos.collect { avisos += it } }
         var returnedToMenu = false
+        viewModel.finalizarYGuardarJornada { returnedToMenu = true }
+        assertFalse(returnedToMenu)
+        assertEquals(JornadaEntity.SYNC_EN_CURSO, fakeJornadaDao.getJornadaById(idRegistro)!!.estadoSync)
+        assertTrue(avisos.single().startsWith("No se puede cerrar la jornada:"))
+        recolector.cancel()
+
+        // Se completa lo que en el flujo real hacen P3–P7 (limpieza, fotos omitidas con motivo, sin herramientas)
+        completarParaCierre(idRegistro)
         viewModel.finalizarYGuardarJornada { returnedToMenu = true }
         assertTrue(returnedToMenu)
 

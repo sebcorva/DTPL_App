@@ -116,6 +116,7 @@ fun MenuPrincipalScreen(
         )
         BarraInferior(
             seleccionada = PestanaInferior.INICIO,
+            rechazadas = uiState.rechazadasCount,
             onInicio = {},
             onReportes = onReportesClick
         )
@@ -268,24 +269,29 @@ private fun TarjetaSincronizacion(
     val onda = remember { Animatable(0f) }
     LaunchedEffect(resultado) {
         if (resultado == null) return@LaunchedEffect
-        if (resultado == ResultadoSync.EXITO) {
+        if (resultado == ResultadoSync.Exito) {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             reproducirSonidoExito(context)
             onda.snapTo(0f)
             onda.animateTo(1f, tween(durationMillis = 900, easing = FastOutSlowInEasing))
+            delay(DURACION_EXITO_MS)
+        } else {
+            delay(DURACION_ERROR_MS) // el mensaje de error se lee ~4 s
         }
-        delay(DURACION_RESULTADO_MS)
         onFeedbackMostrado()
     }
 
     val n = uiState.pendingSyncCount
+    val r = uiState.rechazadasCount
     val (colorPunto, estado) = when {
-        resultado == ResultadoSync.ERROR -> ErrorRojo to "No se pudo sincronizar"
+        resultado is ResultadoSync.Error -> ErrorRojo to resultado.mensaje
+        sincronizando -> SyncVerde to "Sincronizando…"
+        uiState.servidorEnMantencion -> SyncGris to "Servidor en mantención"
+        n == 0 && r > 0 -> ErrorRojo to "$r ${if (r == 1) "jornada rechazada" else "jornadas rechazadas"} · revisar en Reportes"
         else -> when (uiState.syncButtonState) {
-            SyncButtonState.GRIS_SIN_DATOS -> SyncGris to "Sin jornadas pendientes"
             SyncButtonState.AMARILLO_SIN_INTERNET -> SyncAmarillo to "$n ${if (n == 1) "pendiente" else "pendientes"} · sin internet"
             SyncButtonState.VERDE_LISTO_PARA_SYNC -> SyncVerde to "$n ${if (n == 1) "lista" else "listas"} para sincronizar"
-            SyncButtonState.SINCRONIZANDO -> SyncVerde to "Sincronizando…"
+            else -> SyncGris to "Sin jornadas pendientes"
         }
     }
     val colorTextoEstado = when (colorPunto) {
@@ -298,8 +304,8 @@ private fun TarjetaSincronizacion(
 
     val icono = when {
         sincronizando -> IconoSync.CARGANDO
-        resultado == ResultadoSync.EXITO -> IconoSync.EXITO
-        resultado == ResultadoSync.ERROR -> IconoSync.ERROR
+        resultado == ResultadoSync.Exito -> IconoSync.EXITO
+        resultado is ResultadoSync.Error -> IconoSync.ERROR
         else -> IconoSync.NUBE
     }
     val fondoIcono by animateColorAsState(
@@ -405,10 +411,11 @@ private fun TarjetaSincronizacion(
 
 private enum class IconoSync { NUBE, CARGANDO, EXITO, ERROR }
 
-private const val DURACION_RESULTADO_MS = 2_500L
+private const val DURACION_EXITO_MS = 2_500L
+private const val DURACION_ERROR_MS = 4_000L
 
 /** Sonido corto de éxito (res/raw/sync_exito.wav, generado para la app). Respeta el volumen de sistema. */
-private fun reproducirSonidoExito(context: Context) {
+internal fun reproducirSonidoExito(context: Context) {
     runCatching {
         val atributos = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)

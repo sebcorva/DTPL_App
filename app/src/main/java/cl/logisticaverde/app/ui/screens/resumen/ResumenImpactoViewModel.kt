@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import cl.logisticaverde.app.data.local.db.JornadaDao
 import cl.logisticaverde.app.domain.resumen.ResumenImpacto
 import cl.logisticaverde.app.domain.resumen.ResumenImpactoCalculator
+import cl.logisticaverde.app.domain.sync.RegistroErrores
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,13 +30,20 @@ class ResumenImpactoViewModel(
 
     init {
         viewModelScope.launch {
-            val jornada = jornadaDao.getJornadaById(idRegistro)
-            _uiState.value = if (jornada == null) {
+            _uiState.value = try {
+                val jornada = jornadaDao.getJornadaById(idRegistro)
+                if (jornada == null) {
+                    ResumenImpactoUiState.NoEncontrada
+                } else {
+                    ResumenImpactoUiState.Listo(
+                        ResumenImpactoCalculator.calcular(jornada, jornadaDao.getBasuraRecolectadaList(idRegistro))
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                RegistroErrores.advertencia("ResumenImpacto", "No se pudo cargar $idRegistro", e)
                 ResumenImpactoUiState.NoEncontrada
-            } else {
-                ResumenImpactoUiState.Listo(
-                    ResumenImpactoCalculator.calcular(jornada, jornadaDao.getBasuraRecolectadaList(idRegistro))
-                )
             }
         }
     }

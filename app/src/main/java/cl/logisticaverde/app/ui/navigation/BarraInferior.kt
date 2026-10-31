@@ -10,6 +10,8 @@ import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -24,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import cl.logisticaverde.app.ui.theme.AzulMarinoSuave
 import cl.logisticaverde.app.ui.theme.AzulPetroleo
 import cl.logisticaverde.app.ui.theme.Blanco
+import cl.logisticaverde.app.ui.theme.ErrorRojo
 import cl.logisticaverde.app.ui.theme.SyncGris
 import cl.logisticaverde.app.ui.theme.VerdeMenta
 
@@ -38,7 +41,9 @@ fun BarraInferior(
     seleccionada: PestanaInferior,
     onInicio: () -> Unit,
     onReportes: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // ISSUE-42: globo rojo en Reportes con las jornadas rechazadas
+    rechazadas: Int = 0
 ) {
     val context = LocalContext.current
     val colores = NavigationBarItemDefaults.colors(
@@ -75,10 +80,18 @@ fun BarraInferior(
             selected = seleccionada == PestanaInferior.REPORTES,
             onClick = { if (seleccionada != PestanaInferior.REPORTES) onReportes() },
             icon = {
-                Icon(
-                    if (seleccionada == PestanaInferior.REPORTES) Icons.Filled.BarChart else Icons.Outlined.BarChart,
-                    contentDescription = null
-                )
+                BadgedBox(
+                    badge = {
+                        if (rechazadas > 0) {
+                            Badge(containerColor = ErrorRojo, contentColor = Blanco) { Text(rechazadas.toString()) }
+                        }
+                    }
+                ) {
+                    Icon(
+                        if (seleccionada == PestanaInferior.REPORTES) Icons.Filled.BarChart else Icons.Outlined.BarChart,
+                        contentDescription = if (rechazadas > 0) "$rechazadas rechazadas" else null
+                    )
+                }
             },
             label = { Text("Reportes") },
             colors = colores

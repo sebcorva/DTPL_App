@@ -12,6 +12,7 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import cl.logisticaverde.app.domain.sync.RegistroErrores
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -484,7 +485,8 @@ private fun QrCameraPreview(
                         preview,
                         imageAnalysis
                     )
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    RegistroErrores.advertencia("EscanerQR", "No se pudo abrir la cámara del escáner", e)
                 }
             }, ContextCompat.getMainExecutor(context))
 

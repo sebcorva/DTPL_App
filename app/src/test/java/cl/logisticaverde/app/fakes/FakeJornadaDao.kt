@@ -29,9 +29,23 @@ class FakeJornadaDao : JornadaDao {
     override suspend fun getJornadaById(idRegistro: String): JornadaEntity? =
         jornadasFlow.value.find { it.idRegistro == idRegistro }
 
+    override suspend fun marcarErrorSync(idRegistro: String, motivo: String) {
+        jornadasFlow.update { current ->
+            current.map {
+                if (it.idRegistro == idRegistro) it.copy(estadoSync = JornadaEntity.SYNC_ERROR, motivoErrorSync = motivo) else it
+            }
+        }
+    }
+
+    override fun observeJornadasRechazadas(): Flow<List<JornadaEntity>> =
+        jornadasFlow.map { list -> list.filter { it.estadoSync == JornadaEntity.SYNC_ERROR }.sortedByDescending { it.horaInicioMs } }
+
+    override fun observeRechazadasCount(): Flow<Int> =
+        jornadasFlow.map { list -> list.count { it.estadoSync == JornadaEntity.SYNC_ERROR } }
+
     override fun observeUltimasJornadasCerradas(limite: Int): Flow<List<JornadaEntity>> =
         jornadasFlow.map { list ->
-            list.filter { it.estadoSync != JornadaEntity.SYNC_EN_CURSO }
+            list.filter { it.estadoSync == JornadaEntity.SYNC_PENDIENTE || it.estadoSync == JornadaEntity.SYNC_SINCRONIZADO }
                 .sortedByDescending { it.horaInicioMs }
                 .take(limite)
         }
@@ -80,7 +94,7 @@ class FakeJornadaDao : JornadaDao {
 
     override suspend fun updateEstadoSync(idRegistro: String, nuevoEstado: String) {
         jornadasFlow.update { current ->
-            current.map { if (it.idRegistro == idRegistro) it.copy(estadoSync = nuevoEstado) else it }
+            current.map { if (it.idRegistro == idRegistro) it.copy(estadoSync = nuevoEstado, motivoErrorSync = null) else it }
         }
     }
 
@@ -126,7 +140,7 @@ class FakeJornadaDao : JornadaDao {
 
     override suspend fun getQrHerramientasNoSincronizadas(): List<String> {
         val noSincronizadas = jornadasFlow.value
-            .filter { it.estadoSync == JornadaEntity.SYNC_EN_CURSO || it.estadoSync == JornadaEntity.SYNC_PENDIENTE }
+            .filter { it.estadoSync != JornadaEntity.SYNC_SINCRONIZADO }
             .map { it.idRegistro }
             .toSet()
         return herramientasJornadaFlow.value.filter { it.idRegistro in noSincronizadas }.map { it.qrCodigo }.distinct()

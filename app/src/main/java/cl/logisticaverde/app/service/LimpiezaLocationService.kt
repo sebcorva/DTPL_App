@@ -20,6 +20,8 @@ import cl.logisticaverde.app.MainActivity
 import cl.logisticaverde.app.R
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
 import cl.logisticaverde.app.domain.util.GpsDistanceTracker
+import cl.logisticaverde.app.domain.sync.RegistroErrores
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -63,7 +65,11 @@ class LimpiezaLocationService : Service() {
         }
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    // ISSUE-42: un error al escribir en Room se registra y no detiene el servicio ni cierra la app
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Main.immediate +
+            CoroutineExceptionHandler { _, e -> RegistroErrores.advertencia("LimpiezaGPS", "Error del servicio GPS", e) }
+    )
     private var tracker: GpsDistanceTracker? = null
     private var idRegistroActivo: String? = null
 
@@ -131,8 +137,9 @@ class LimpiezaLocationService : Service() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0
             )
             true
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Android 12+ puede negar iniciar un servicio en primer plano desde segundo plano
+            RegistroErrores.advertencia("LimpiezaGPS", "No se pudo iniciar el servicio en primer plano", e)
             false
         }
     }

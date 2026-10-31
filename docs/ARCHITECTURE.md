@@ -74,11 +74,12 @@ flowchart TD
 * `AppDestinations.routeForScreenNumber(pantalla_actual)` permite reanudar en la pantalla exacta.
 * Desde P5 iniciada, la navegación hacia adelante usa `popUpTo(PANTALLA_1_MENU)`, de modo que solo queda el menú debajo; un `BackHandler` muestra el diálogo de salida (v3) [ISSUE-22].
 
-## 4. Persistencia Local (Room v4)
+## 4. Persistencia Local (Room v5)
 
 * Modelo completo en **PRD §4**. Tablas: 4 catálogos (`playa_catalogo`, `sector_catalogo`, `herramienta_catalogo`, `tipo_basura_catalogo`) + `jornada`, `participante_jornada`, `herramienta_jornada`, `basura_recolectada`.
 * Topes compartidos con la RPC en `domain/reglas/TopesJornada.kt`; `FechaJornada` calcula `fecha_jornada` en hora de Chile. Los DAOs limitan el conteo (≤ 5.000) y los km (≤ 30) directamente en SQL.
-* `estado_sync`: `EN_CURSO` → (P9 Guardar) `PENDIENTE_SYNC` → (RPC OK) `SINCRONIZADO`.
+* `estado_sync`: `EN_CURSO` → (P9 Guardar, tras `ValidadorJornada`) `PENDIENTE_SYNC` → (RPC OK) `SINCRONIZADO`, o (rechazo / foto faltante) `ERROR_SYNC` + `motivo_error_sync` → (Reintentar) `SINCRONIZADO` o `PENDIENTE_SYNC` sin internet.
+* v4 → v5 destructiva (31-10-2026, ISSUE-42). Desde la v5, solo migraciones explícitas.
 * Semilla: `RoomDatabase.Callback` + verificación en el primer arranque cargan playas, sectores, herramientas y tipos de basura desde `CatalogoSeedData`.
 * **Migraciones:** `exportSchema = true`, esquemas en `app/schemas/`; `fallbackToDestructiveMigrationFrom(1, 2, 3)`: los saltos a v3 y a v4 borraron datos de prueba. Desde la v4, `Migration` explícita + `MigrationTestHelper` [ISSUE-17, ISSUE-31].
 
@@ -128,6 +129,14 @@ sequenceDiagram
 ### 5.3 Catálogos
 * `GET rest/v1/{sector_catalogo|herramienta_catalogo|tipo_basura_catalogo}` → `@Upsert` en Room.
 * Antes del upsert de herramientas se excluyen las que aparecen en jornadas `EN_CURSO` o `PENDIENTE_SYNC` (BR-10).
+
+### 5.4 Manejo de errores [ISSUE-42]
+* `domain/sync/ErrorSync.kt`: `SinConfiguracion`, `SinConexion` (IOException), `ServidorNoPreparado` (PGRST202/205, 404), `NoAutorizado` (401/403), `ErrorServidor` (5xx), `Rechazada(motivo)` (RPC `RECHAZADA: …` o 400 22xxx/23xxx), `FotoFaltante`, `Desconocido`. `MensajesSync` da el texto para el líder; `RegistroErrores` escribe en `Log` (sin nombres ni coordenadas).
+* `detenerLote` (sin internet, servidor, permisos) corta el lote; `rechazaJornada` deja la jornada en `ERROR_SYNC`; el resto queda `PENDIENTE_SYNC`. `CancellationException` siempre se propaga.
+* RPC: `sincronizar_jornada` (pública) envuelve a `sincronizar_jornada_interna`; los errores de clase 22/23 se registran en `jornada_rechazada` (deduplicado por id + motivo, tope 5.000 sin resolver, payload ≤ 100 kB) y se responden como `RECHAZADA: <motivo>` (HTTP 200). Si después entra, la fila queda `resuelta`.
+* P1: "Servidor en mantención" (revisión al volver al menú, ≤ 1 cada 30 s, y al recuperar internet); error ~4 s en la línea de estado; "N jornada(s) rechazada(s) · revisar en Reportes" y globo rojo en Reportes.
+* P2–P9: `CoroutineExceptionHandler` en `JornadaFlujoViewModel` → snackbar "No se pudo guardar. Intenta de nuevo." (la navegación de esa acción no ocurre). P9 valida con `ValidadorJornada` (mismas reglas que la RPC) antes de cerrar.
+* Servicio GPS, P10 y escáner QR: errores registrados sin cerrar la app.
 
 ## 6. Seguridad
 

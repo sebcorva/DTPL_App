@@ -19,6 +19,10 @@ interface JornadaDao {
     @Query("SELECT * FROM jornada WHERE estado_sync = 'EN_CURSO' LIMIT 1")
     fun observeJornadaEnCurso(): Flow<JornadaEntity?>
 
+    /** Solo desarrollo (ISSUE-45). Participantes, herramientas y basura se borran en cascada. */
+    @Query("DELETE FROM jornada WHERE id_registro = :idRegistro AND estado_sync = 'EN_CURSO'")
+    suspend fun deleteJornadaEnCurso(idRegistro: String): Int
+
     @Query("SELECT * FROM jornada WHERE id_registro = :idRegistro LIMIT 1")
     fun observeJornadaById(idRegistro: String): Flow<JornadaEntity?>
 

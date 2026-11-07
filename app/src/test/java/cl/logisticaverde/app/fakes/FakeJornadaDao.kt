@@ -23,6 +23,17 @@ class FakeJornadaDao : JornadaDao {
     override fun observeJornadaEnCurso(): Flow<JornadaEntity?> =
         jornadasFlow.map { list -> list.find { it.estadoSync == JornadaEntity.SYNC_EN_CURSO } }
 
+    override suspend fun deleteJornadaEnCurso(idRegistro: String): Int {
+        val borrar = jornadasFlow.value.any { it.idRegistro == idRegistro && it.estadoSync == JornadaEntity.SYNC_EN_CURSO }
+        if (!borrar) return 0
+        jornadasFlow.update { list -> list.filterNot { it.idRegistro == idRegistro } }
+        // Cascada, como las ForeignKey de Room
+        participantesFlow.update { list -> list.filterNot { it.idRegistro == idRegistro } }
+        herramientasJornadaFlow.update { list -> list.filterNot { it.idRegistro == idRegistro } }
+        basuraFlow.update { list -> list.filterNot { it.idRegistro == idRegistro } }
+        return 1
+    }
+
     override fun observeJornadaById(idRegistro: String): Flow<JornadaEntity?> =
         jornadasFlow.map { list -> list.find { it.idRegistro == idRegistro } }
 

@@ -733,4 +733,27 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
         viewModel.guardarPantalla2Equipo {}
     }
+
+    @Test
+    fun `Desarrollo - Eliminar jornada en curso borra solo esa jornada y sus participantes`() = runTest {
+        viewModel.onNombreLiderChange("Vanessa")
+        assertTrue(viewModel.agregarVoluntario("Diego"))
+        viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
+        viewModel.guardarPantalla2Equipo { }
+        val idEnCurso = viewModel.uiState.value.idRegistroActivo!!
+        // Jornada ya cerrada (pendiente de sync): no debe tocarse
+        val pendiente = fakeJornadaDao.getJornadaById(idEnCurso)!!
+            .copy(idRegistro = "cerrada-1", estadoSync = JornadaEntity.SYNC_PENDIENTE)
+        fakeJornadaDao.insertJornada(pendiente)
+
+        var eliminada = false
+        viewModel.eliminarJornadaEnCurso { eliminada = true }
+
+        assertTrue(eliminada)
+        assertNull(fakeJornadaDao.getJornadaById(idEnCurso))
+        assertTrue(fakeJornadaDao.getParticipantesList(idEnCurso).isEmpty())
+        assertNotNull(fakeJornadaDao.getJornadaById("cerrada-1"))
+        assertNull(viewModel.uiState.value.idRegistroActivo)
+        assertEquals("", viewModel.uiState.value.nombreLider)
+    }
 }

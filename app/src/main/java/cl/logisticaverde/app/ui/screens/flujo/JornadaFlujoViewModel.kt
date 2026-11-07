@@ -362,6 +362,24 @@ class JornadaFlujoViewModel(
         }
     }
 
+    /**
+     * Solo desarrollo (ISSUE-45): borra la jornada EN_CURSO (con sus tablas hijas en cascada) y sus fotos
+     * locales. No toca jornadas cerradas ni Supabase (una jornada en curso nunca se ha subido).
+     */
+    fun eliminarJornadaEnCurso(onEliminada: () -> Unit) {
+        viewModelScope.launch(manejadorErrores) {
+            val enCurso = jornadaDao.observeJornadaEnCurso().firstOrNull() ?: return@launch
+            equipoMutex.withLock {
+                listOf(enCurso.pathFotoInicio, enCurso.pathFotoLimpio, enCurso.pathFotoSacos)
+                    .filter { it.isNotBlank() }
+                    .forEach { runCatching { java.io.File(it).delete() } }
+                jornadaDao.deleteJornadaEnCurso(enCurso.idRegistro)
+                _uiState.value = EquipoSeleccionUiState()
+            }
+            onEliminada()
+        }
+    }
+
     // --- PANTALLA 2: Líder y Voluntarios escritos a mano ---
     // Serializa las escrituras de P2: varias altas seguidas no deben crear dos jornadas
     private val equipoMutex = Mutex()

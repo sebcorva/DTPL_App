@@ -293,6 +293,11 @@
   - [x] Validaciones y guardado en Room sin cambios; errores bajo cada campo (56 tests en verde).
   - [x] Verificado en emulador (1080×2400): líder, voluntario con globo y lista, playa, Siguiente habilitado, teclado abierto.
 
+### `[ISSUE-45]` 🛠️ Botón de desarrollo "Eliminar jornada en curso" en la P1 — **quitar antes del piloto**
+> **Decisiones del 07-11-2026:** basurero rojo arriba a la derecha de la P1, visible solo con una jornada en curso y en **todas** las variantes (debug y release), porque se usa desde el celular. Pide confirmación con un diálogo que explica qué se borra.
+* Borra del teléfono la jornada `EN_CURSO` (participantes, herramientas y basura en cascada) y sus fotos locales, y detiene el GPS. No toca jornadas cerradas, catálogos ni Supabase.
+* ⚠️ **Riesgo:** mientras exista, un líder podría borrar una jornada real. Antes de ISSUE-29 (piloto) se quita o se deja solo en `debug` (`BuildConfig.DEBUG`).
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

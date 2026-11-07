@@ -278,6 +278,21 @@
   3. Acordar con el administrador que los catálogos no se borran durante el piloto (solo documentar).
 * Relacionado: ISSUE-39 (inventario de herramientas) y BR-10 (no pisar el estado de herramientas en jornadas pendientes).
 
+### `[ISSUE-44]` ✅ Rediseño UI: Pantalla 2 "Conformar Brigada" · 0,5 d
+> **Decisiones del 07-11-2026** (según la imagen de diseño, con la paleta y Nunito actuales; solo visual, sin cambios de lógica ni de Room):
+> 1. Fondo degradado global de la P1; tarjetas blancas redondeadas.
+> 2. Título "Conformar Brigada" en `AzulMarino`; subtítulos "Líder de brigada" y "Voluntarios" en `VerdeAccionOscuro`, sin numeración.
+> 3. Brigadas en grilla 2×2: seleccionada en `VerdeAccion`; el resto en `AzulPetroleoClaro` con texto `AzulMarino`.
+> 4. Playa: desplegable solo con el placeholder "Elige una playa" (sin "Playa" delante, tampoco con una playa elegida); ícono de mapa a la derecha, **fuera** del desplegable y solo decorativo.
+> 5. Junto a "Voluntarios": ícono de voluntarios con globo que muestra la cantidad de voluntarios; siempre activo. (El ícono de líder se quitó el 07-11-2026.) Se quita el texto "N voluntarios + 1 líder = N+1 integrantes".
+> 6. Agregar voluntario: botón redondo con "+", gris y deshabilitado si el campo está vacío.
+> 7. Lista de voluntarios bajo el divisor, cada nombre con un basurero para eliminarlo; "Aún no hay voluntarios" si está vacía.
+> 8. Botón Siguiente tipo píldora en verde (consistencia con "Iniciar jornada") con flecha a la derecha.
+* **Criterios de aceptación:**
+  - [x] `EquipoScreen` según las decisiones 1–8.
+  - [x] Validaciones y guardado en Room sin cambios; errores bajo cada campo (56 tests en verde).
+  - [x] Verificado en emulador (1080×2400): líder, voluntario con globo y lista, playa, Siguiente habilitado, teclado abierto.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

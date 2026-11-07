@@ -249,14 +249,7 @@ private fun BotonJornada(uiState: MenuPrincipalUiState, onClick: () -> Unit) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, modifier = Modifier.size(30.dp))
             }
         }
-        if (jornada != null) {
-            // Decisión 31-10-2026: solo líder de brigada - brigada
-            val detalle = listOf(jornada.nombreLider, jornada.brigada).filter { it.isNotBlank() }.joinToString(" - ")
-            if (detalle.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(text = detalle, style = MaterialTheme.typography.bodyMedium, color = AzulMarinoSuave)
-            }
-        }
+        // Decisión 07-11-2026: sin la línea "Líder - Brigada" bajo Reanudar
     }
 }
 

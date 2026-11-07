@@ -96,12 +96,14 @@ class JornadaSyncRepository(
             supabaseApi.getTiposBasuraCatalogo().cuerpoOError("catálogo de residuos")
                 .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertTiposBasura(it) }
 
-            // Playas antes que sectores: cada sector pertenece a una playa
+            // Playas antes que sectores: cada sector pertenece a una playa.
+            // ISSUE-43: se reemplazan por completo, así lo borrado en Supabase desaparece del teléfono.
+            // Una lista vacía no borra nada (protege de un servidor a medio preparar).
             supabaseApi.getPlayasCatalogo().cuerpoOError("catálogo de playas")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertPlayas(it) }
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.reemplazarPlayas(it) }
 
             supabaseApi.getSectoresCatalogo().cuerpoOError("catálogo de sectores")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertSectores(it) }
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.reemplazarSectores(it) }
 
             EstadoServidor.OK
         } catch (e: CancellationException) {

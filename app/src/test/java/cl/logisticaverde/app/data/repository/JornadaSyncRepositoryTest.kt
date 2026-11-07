@@ -399,10 +399,39 @@ class JornadaSyncRepositoryTest {
         assertEquals(HerramientaCatalogoEntity.ESTADO_EXTRAVIADO, fakeCatalogoDao.getHerramientaByQr("INV-02-PINZA-01")!!.estado)
     }
 
+    @Test
+    fun `ISSUE-43 Sectores borrados en Supabase desaparecen del telefono`() = runTest {
+        // Copia local con un sector que el servidor ya no tiene (SECTOR-TEST de la prueba de ISSUE-42)
+        val sectorPrueba = SectorCatalogoEntity(
+            idSector = "SECTOR-TEST",
+            idPlaya = CatalogoSeedData.ID_PLAYA_GRANDE,
+            nombreSector = "Sector PRUEBA",
+            areaM2 = 100
+        )
+        fakeCatalogoDao.upsertSectores(listOf(sectorPrueba))
+        assertTrue(fakeCatalogoDao.getSectoresList().any { it.idSector == "SECTOR-TEST" })
+
+        fakeApi.sectoresRemotos = CatalogoSeedData.sectoresPlayaGrande
+        assertEquals(EstadoServidor.OK, repository().sincronizarCatalogosMaestros())
+
+        assertEquals(
+            CatalogoSeedData.sectoresPlayaGrande.map { it.idSector },
+            fakeCatalogoDao.getSectoresList().map { it.idSector }
+        )
+    }
+
+    @Test
+    fun `ISSUE-43 Un catalogo de sectores vacio no borra los sectores locales`() = runTest {
+        fakeApi.sectoresRemotos = emptyList()
+        assertEquals(EstadoServidor.OK, repository().sincronizarCatalogosMaestros())
+        assertEquals(CatalogoSeedData.sectoresPlayaGrande.size, fakeCatalogoDao.getSectoresList().size)
+    }
+
     private class FakeSupabaseApi : SupabaseApi {
         val fotosSubidas = mutableListOf<String>()
         val rpcRecibidas = mutableListOf<SincronizarJornadaRequest>()
         var herramientasRemotas: List<HerramientaCatalogoEntity> = emptyList()
+        var sectoresRemotos: List<SectorCatalogoEntity> = emptyList()
         var respuestaFoto: (String) -> Response<Unit> = { Response.success(Unit) }
         var respuestaRpc: (SincronizarJornadaRequest) -> Response<String> =
             { Response.success(JornadaSyncRepository.RPC_INSERTADA) }
@@ -424,7 +453,7 @@ class JornadaSyncRepositoryTest {
             catalogo(emptyList())
 
         override suspend fun getSectoresCatalogo(select: String): Response<List<SectorCatalogoEntity>> =
-            catalogo(emptyList())
+            catalogo(sectoresRemotos)
 
         override suspend fun uploadEvidencePhoto(
             bucket: String,

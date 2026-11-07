@@ -269,7 +269,9 @@
 * ✅ `allowBackup="false"` + `dataExtractionRules` (31-10-2026): nada se respalda en la nube de Google ni se copia a un teléfono nuevo.
 * Pendientes: bucket público (fotos visibles con la URL, Ley 21.719); límite del bucket de 5 MB (la app sube ~180 KB); respaldo de la keystore de firma.
 
-### `[ISSUE-43]` 📝 Catálogos locales que no se actualizan al borrar en el servidor — anotado, por decidir
+### `[ISSUE-43]` 🟡 Catálogos locales que no se actualizan al borrar en el servidor — playas y sectores resueltos
+* ✅ **Resuelto para playas y sectores (07-11-2026):** al descargar, `reemplazarPlayas` / `reemplazarSectores` (transacción en `CatalogoDao`) borran lo que ya no viene del servidor y actualizan el resto; una lista vacía no borra nada. Detectado porque "Sector PRUEBA" (`SECTOR-TEST`, borrado en Supabase) seguía en la P3. Verificado contra Supabase en el emulador; 2 tests nuevos. El fake de `CatalogoDao` ahora se comporta como `@Upsert` (antes reemplazaba la lista y ocultaba el problema).
+* Pendiente: herramientas y tipos de basura (tienen llaves foráneas `RESTRICT` desde las tablas de la jornada; requieren la opción 1 con cuidado o la opción 2).
 * **Hallazgo (07-11-2026, prueba de rechazo de ISSUE-42):** `sincronizarCatalogosMaestros()` solo hace *upsert*: si el administrador borra (o cambia de playa) un sector, una herramienta o una playa en Supabase, la app conserva su copia local. El dato borrado sigue apareciendo en P2–P4, la validación de la P9 lo acepta y la jornada termina **rechazada** por la RPC al sincronizar ("Sector desconocido o de otra playa", "Herramienta desconocida", "Playa desconocida").
 * **Riesgo en el piloto:** cualquier ajuste de catálogo hecho por el administrador provoca rechazos en los teléfonos que no se actualicen; hoy la única salida es restaurar el dato en el servidor y usar "Reintentar".
 * **Opciones:**

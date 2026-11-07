@@ -19,8 +19,14 @@ class FakeCatalogoDao : CatalogoDao {
 
     override fun observePlayas(): Flow<List<PlayaCatalogoEntity>> = playasFlow
 
+    // Igual que @Upsert de Room: agrega o actualiza, no borra
     override suspend fun upsertPlayas(playas: List<PlayaCatalogoEntity>) {
-        playasFlow.value = playas
+        val nuevas = playas.associateBy { it.idPlaya }
+        playasFlow.update { lista -> lista.filterNot { it.idPlaya in nuevas } + playas }
+    }
+
+    override suspend fun deletePlayasExcepto(idsVigentes: List<String>) {
+        playasFlow.update { lista -> lista.filter { it.idPlaya in idsVigentes } }
     }
 
     override fun observeSectores(): Flow<List<SectorCatalogoEntity>> = sectoresFlow
@@ -28,7 +34,12 @@ class FakeCatalogoDao : CatalogoDao {
     override suspend fun getSectoresList(): List<SectorCatalogoEntity> = sectoresFlow.value
 
     override suspend fun upsertSectores(sectores: List<SectorCatalogoEntity>) {
-        sectoresFlow.value = sectores
+        val nuevos = sectores.associateBy { it.idSector }
+        sectoresFlow.update { lista -> (lista.filterNot { it.idSector in nuevos } + sectores).sortedBy { it.idSector } }
+    }
+
+    override suspend fun deleteSectoresExcepto(idsVigentes: List<String>) {
+        sectoresFlow.update { lista -> lista.filter { it.idSector in idsVigentes } }
     }
 
     override fun observeHerramientasCatalogo(): Flow<List<HerramientaCatalogoEntity>> = herramientasFlow

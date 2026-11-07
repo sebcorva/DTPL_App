@@ -2,6 +2,7 @@ package cl.logisticaverde.app.data.local.db
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
@@ -19,6 +20,16 @@ interface CatalogoDao {
     @Upsert
     suspend fun upsertPlayas(playas: List<PlayaCatalogoEntity>)
 
+    @Query("DELETE FROM playa_catalogo WHERE id_playa NOT IN (:idsVigentes)")
+    suspend fun deletePlayasExcepto(idsVigentes: List<String>)
+
+    /** ISSUE-43: deja las playas locales idénticas a las del servidor (borra las que ya no vienen). */
+    @Transaction
+    suspend fun reemplazarPlayas(playas: List<PlayaCatalogoEntity>) {
+        deletePlayasExcepto(playas.map { it.idPlaya })
+        upsertPlayas(playas)
+    }
+
     // --- SECTORES (cada uno pertenece a una playa) ---
     @Query("SELECT * FROM sector_catalogo ORDER BY id_sector ASC")
     fun observeSectores(): Flow<List<SectorCatalogoEntity>>
@@ -28,6 +39,16 @@ interface CatalogoDao {
 
     @Upsert
     suspend fun upsertSectores(sectores: List<SectorCatalogoEntity>)
+
+    @Query("DELETE FROM sector_catalogo WHERE id_sector NOT IN (:idsVigentes)")
+    suspend fun deleteSectoresExcepto(idsVigentes: List<String>)
+
+    /** ISSUE-43: deja los sectores locales idénticos a los del servidor (borra los que ya no vienen). */
+    @Transaction
+    suspend fun reemplazarSectores(sectores: List<SectorCatalogoEntity>) {
+        deleteSectoresExcepto(sectores.map { it.idSector })
+        upsertSectores(sectores)
+    }
 
     // --- HERRAMIENTAS QR ---
     @Query("SELECT * FROM herramienta_catalogo ORDER BY qr_codigo ASC")

@@ -48,8 +48,8 @@ import java.io.File
 
 /**
  * Pantalla 6:
- * - Foto de sector limpio (720p) o marcar "Continuar sin fotografía (omitir)".
- * - Foto de sacos llenos (720p) o marcar "Continuar sin fotografía (omitir)".
+ * - Foto de sector limpio (720p) o marcar "Continuar sin fotografía".
+ * - Foto de sacos llenos (720p) o marcar "Continuar sin fotografía".
  * - Botón Siguiente.
  */
 @Composable
@@ -314,7 +314,7 @@ private fun EvidencePhotoCard(
                     onCheckedChange = onToggleOmitir
                 )
                 Text(
-                    text = "Continuar sin fotografía (omitir)",
+                    text = "Continuar sin fotografía",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

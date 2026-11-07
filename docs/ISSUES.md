@@ -298,6 +298,24 @@
 * Borra del teléfono la jornada `EN_CURSO` (participantes, herramientas y basura en cascada) y sus fotos locales, y detiene el GPS. No toca jornadas cerradas, catálogos ni Supabase.
 * ⚠️ **Riesgo:** mientras exista, un líder podría borrar una jornada real. Antes de ISSUE-29 (piloto) se quita o se deja solo en `debug` (`BuildConfig.DEBUG`).
 
+### `[ISSUE-46]` ✅ Rediseño UI: Pantalla 3 "Seleccionar sector a limpiar" · 0,5 d
+> **Decisiones del 07-11-2026** (según la imagen de diseño, con la paleta y Nunito actuales; solo visual):
+> 1. Título "Seleccionar sector a limpiar"; subtítulos "Seleccionar sector" (sin "(es)" ni total de m²) y "Foto de sector inicio" (sin "(Sucio)").
+> 2. Sectores uno por fila, a todo el ancho de la tarjeta (ajuste del 07-11-2026; antes grilla de 2 columnas), mismo botón que las brigadas de la P2. Solo se ve el nombre ("Sector 1 - Norte"): sin "(2.000 m²)" ni "Superficie: …"; los m² se siguen calculando internamente.
+> 3. Visor de foto con esquinas y botón verde "Tomar foto de inicio" encima de la ilustración `playa_sucia_p3` (WebP en `res/drawable-nodpi`; original `Mockup/assets/background_playa_sucia.jpg`); con foto, vista previa y "Repetir foto de inicio".
+> 4. "Continuar sin fotografía" (sin "(omitir)"), también en la P8. Al omitir, el área de la foto cambia a un fondo celeste "Sin fotografía" (cámara tachada, sin la ilustración) con el motivo obligatorio (ISSUE-35) en una tarjeta blanca. El campo de motivo (P3 y P8) usa el formato del flujo: bordes redondeados, aviso suave "Obligatorio para continuar" (no en rojo) y contador.
+> 5. Botón Siguiente en píldora verde; ✓ verde junto al subtítulo cuando la foto está resuelta.
+* Piezas comunes del flujo en `ComponentesFlujo.kt` (tarjeta, subtítulo, botón de selección, Siguiente), usadas por la P2 y la P3.
+* **Criterios de aceptación:**
+  - [x] `SectoresFotoInicioScreen` según las decisiones 1–5; sin cambios de lógica ni de Room.
+  - [x] Test de `nombreSectorVisible` (quita solo la superficie final).
+  - [x] Verificado en emulador: selección múltiple, ilustración, omitir con motivo.
+
+### `[ISSUE-47]` 📝 Nombres de sector sin la superficie en el catálogo — mejora futura
+* **Hallazgo (07-11-2026, ISSUE-46):** `sector_catalogo.nombre_sector` trae la superficie pegada (`"Sector 1 - Norte (2.000 m²)"`), duplicando `area_m2`. Hoy la app la quita solo al mostrarla (`nombreSectorVisible`).
+* **Propuesta:** dejar el nombre limpio en Supabase, `CatalogoSeedData` y `supabase_schema.sql`, y usar siempre `area_m2` como dato. Sirve para calcular datos (m² limpiados, densidad, KPIs de ISSUE-30) y para reportes sin texto duplicado ni inconsistente si cambia la superficie.
+* Coordinar con el administrador; las jornadas ya hechas guardan el id del sector, así que no se ven afectadas.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

@@ -75,9 +75,6 @@ import cl.logisticaverde.app.ui.theme.SyncGrisIcono
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
 
-private val FormaTarjeta = RoundedCornerShape(24.dp)
-private val FormaCampo = RoundedCornerShape(12.dp)
-
 /**
  * Pantalla 2 "Conformar Brigada" (diseño ISSUE-44):
  * - Tarjeta 1: nombre del líder (mínimo 3 caracteres), brigadas en grilla 2×2 y playa (desplegable, ISSUE-32).
@@ -112,17 +109,12 @@ fun EquipoScreen(
             .fillMaxSize()
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Text(
-            text = "Conformar Brigada",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.ExtraBold,
-            color = AzulMarino
-        )
+        TituloPantallaFlujo("Conformar Brigada")
         Spacer(Modifier.height(12.dp))
 
         // TARJETA 1: líder, brigada y playa
-        Tarjeta {
-            Subtitulo("Líder de brigada")
+        TarjetaFlujo {
+            SubtituloFlujo("Líder de brigada")
             Spacer(Modifier.height(12.dp))
             OutlinedTextField(
                 value = uiState.nombreLider,
@@ -132,8 +124,8 @@ fun EquipoScreen(
                 isError = uiState.errorNombreLider != null,
                 supportingText = uiState.errorNombreLider?.let { { Text(it) } },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
-                shape = FormaCampo,
-                colors = coloresCampo(),
+                shape = FormaCampoFlujo,
+                colors = coloresCampoFlujo(),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -157,8 +149,8 @@ fun EquipoScreen(
                         singleLine = true,
                         placeholder = { Text("Elige una playa") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = playasExpandido) },
-                        shape = FormaCampo,
-                        colors = coloresCampo(),
+                        shape = FormaCampoFlujo,
+                        colors = coloresCampoFlujo(),
                         modifier = Modifier
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                             .fillMaxWidth()
@@ -192,9 +184,9 @@ fun EquipoScreen(
         Spacer(Modifier.height(16.dp))
 
         // TARJETA 2: voluntarios escritos a mano
-        Tarjeta(modifier = Modifier.weight(1f)) {
+        TarjetaFlujo(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Subtitulo("Voluntarios", modifier = Modifier.weight(1f))
+                SubtituloFlujo("Voluntarios", modifier = Modifier.weight(1f))
                 val cantidad = uiState.voluntarios.size
                 BadgedBox(
                     badge = {
@@ -231,8 +223,8 @@ fun EquipoScreen(
                         imeAction = ImeAction.Done
                     ),
                     keyboardActions = KeyboardActions(onDone = { agregar() }),
-                    shape = FormaCampo,
-                    colors = coloresCampo(),
+                    shape = FormaCampoFlujo,
+                    colors = coloresCampoFlujo(),
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(Modifier.width(12.dp))
@@ -300,59 +292,8 @@ fun EquipoScreen(
 
         Spacer(Modifier.height(16.dp))
 
-        // Botón Siguiente: píldora verde, como "Iniciar jornada" (decisión 07-11-2026)
-        Button(
-            onClick = onSiguienteClick,
-            enabled = uiState.esEquipoValido,
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = VerdeAccion, contentColor = Blanco),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(58.dp)
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(id = R.string.btn_next),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-                Icon(
-                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .size(30.dp)
-                )
-            }
-        }
+        BotonSiguienteFlujo(enabled = uiState.esEquipoValido, onClick = onSiguienteClick)
     }
-}
-
-@Composable
-private fun Tarjeta(modifier: Modifier = Modifier, contenido: @Composable () -> Unit) {
-    Surface(
-        shape = FormaTarjeta,
-        color = Blanco,
-        modifier = modifier
-            .fillMaxWidth()
-            .shadow(4.dp, FormaTarjeta)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) { contenido() }
-    }
-}
-
-@Composable
-private fun Subtitulo(texto: String, modifier: Modifier = Modifier) {
-    Text(
-        text = texto,
-        style = MaterialTheme.typography.titleLarge,
-        fontSize = 24.sp,
-        fontWeight = FontWeight.ExtraBold,
-        color = VerdeAccionOscuro,
-        modifier = modifier
-    )
 }
 
 /** Brigadas en grilla de 2 columnas; si la cantidad es impar, la última fila queda con un hueco. */
@@ -362,44 +303,15 @@ private fun GrillaBrigadas(brigadas: List<String>, seleccionada: String, onSelec
         brigadas.chunked(2).forEach { fila ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 fila.forEach { brigada ->
-                    val activa = brigada == seleccionada
-                    Surface(
+                    BotonSeleccionFlujo(
+                        texto = brigada,
+                        activo = brigada == seleccionada,
                         onClick = { onSelect(brigada) },
-                        selected = activa,
-                        shape = FormaCampo,
-                        color = if (activa) VerdeAccion else AzulPetroleoClaro,
-                        contentColor = if (activa) Blanco else AzulMarino,
-                        border = if (activa) null else BorderStroke(1.dp, BordeSuave),
-                        shadowElevation = if (activa) 2.dp else 0.dp,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = brigada,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (fila.size == 1) Spacer(Modifier.weight(1f))
             }
         }
     }
 }
-
-@Composable
-private fun coloresCampo(): TextFieldColors = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = Blanco,
-    unfocusedContainerColor = Blanco,
-    focusedBorderColor = AzulPetroleo,
-    unfocusedBorderColor = BordeSuave,
-    focusedLabelColor = AzulPetroleo,
-    unfocusedLabelColor = AzulMarinoSuave,
-    focusedTextColor = AzulMarino,
-    unfocusedTextColor = AzulMarino,
-    focusedPlaceholderColor = AzulMarinoSuave,
-    unfocusedPlaceholderColor = AzulMarinoSuave
-)

@@ -7,30 +7,33 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.outlined.NoPhotography
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -39,21 +42,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import cl.logisticaverde.app.R
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
 import cl.logisticaverde.app.domain.util.ImageCompressor
+import cl.logisticaverde.app.ui.theme.AzulMarino
+import cl.logisticaverde.app.ui.theme.AzulMarinoSuave
+import cl.logisticaverde.app.ui.theme.Blanco
+import cl.logisticaverde.app.ui.theme.BordeSuave
+import cl.logisticaverde.app.ui.theme.CieloClaro
+import cl.logisticaverde.app.ui.theme.VerdeAccion
 import java.io.File
 
 /**
- * Pantalla 3:
- * - Seleccionar sector(es) a limpiar (permite seleccionar más de uno y calcula m² internamente).
- * - Tomar Foto de Sector Inicio (sucio), comprimida a 720p, o marcar "Continuar sin fotografía (omitir)".
+ * Pantalla 3 "Seleccionar sector a limpiar" (diseño ISSUE-46):
+ * - Tarjeta 1: sectores, uno por fila a todo el ancho (selección múltiple; los m² se calculan
+ *   internamente y no se muestran).
+ * - Tarjeta 2: foto de sector inicio (comprimida a 720p) en un visor con el botón encima,
+ *   o "Continuar sin fotografía" con motivo obligatorio (ISSUE-35) sobre un fondo "Sin fotografía".
  * - Botón Siguiente.
  */
 @Composable
@@ -94,10 +112,18 @@ fun SectoresFotoInicioScreen(
             ).show()
         }
     }
+    val tomarFoto = {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            val (file, uri) = ImageCompressor.createTempImageUri(context, "INICIO")
+            tempPhotoFile = file
+            takePictureLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
 
-    val areaSeleccionadaM2 = sectores
-        .filter { it.idSector in uiState.selectedSectoresIds }
-        .sumOf { it.areaM2 }
     val hasValidSector = uiState.selectedSectoresIds.isNotEmpty()
     val hasPhoto = uiState.pathFotoInicio.isNotBlank() && File(uiState.pathFotoInicio).exists()
     val canProceed = hasValidSector && uiState.fotoInicioResuelta && !uiState.isSavingPhoto
@@ -105,209 +131,223 @@ fun SectoresFotoInicioScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Sector a Limpiar y Foto Inicial",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+        TituloPantallaFlujo("Seleccionar sector a limpiar")
+        Spacer(Modifier.height(12.dp))
 
-            // CARD 1: Selección Múltiple de Sectores (m²)
-            Card(
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(0.46f)
+        // TARJETA 1: selección múltiple de sectores
+        TarjetaFlujo(modifier = Modifier.weight(0.45f)) {
+            SubtituloFlujo("Seleccionar sector")
+            Spacer(Modifier.height(12.dp))
+            if (sectores.isEmpty()) {
+                Text(
+                    text = "No hay sectores para la playa elegida. Vuelve atrás y revisa la playa.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = AzulMarinoSuave
+                )
+            }
+            // Un sector por fila, a todo el ancho de la tarjeta
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = "Seleccionar Sector(es) — Total: $areaSeleccionadaM2 m²",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                items(sectores, key = { it.idSector }) { sector ->
+                    BotonSeleccionFlujo(
+                        texto = nombreSectorVisible(sector.nombreSector),
+                        activo = sector.idSector in uiState.selectedSectoresIds,
+                        onClick = { onToggleSector(sector.idSector) },
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    HorizontalDivider()
-
-                    if (sectores.isEmpty()) {
-                        Text(
-                            text = "No hay sectores para la playa elegida. Vuelve atrás y revisa la playa.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(sectores, key = { it.idSector }) { sector ->
-                            val isChecked = sector.idSector in uiState.selectedSectoresIds
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onToggleSector(sector.idSector) }
-                                    .padding(vertical = 6.dp)
-                            ) {
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { onToggleSector(sector.idSector) }
-                                )
-                                Column(modifier = Modifier.padding(start = 8.dp)) {
-                                    Text(
-                                        text = sector.nombreSector,
-                                        style = MaterialTheme.typography.bodyLarge
-                                    )
-                                    Text(
-                                        text = "Superficie: ${sector.areaM2} m²",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-            // CARD 2: Captura de Foto del Sector al Inicio (Sucio) + Checkbox Omitir
-            Card(
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        // TARJETA 2: foto de sector inicio + "Continuar sin fotografía"
+        TarjetaFlujo(modifier = Modifier.weight(0.55f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                SubtituloFlujo("Foto de sector inicio", modifier = Modifier.weight(1f))
+                if (hasPhoto || (uiState.omitirFotoInicio && uiState.motivoOmisionInicio.isNotBlank())) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "Listo",
+                        tint = VerdeAccion,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.54f)
+                    .weight(1f),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Foto de Sector Inicio (Sucio)",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.weight(1f)
-                        )
-                        if (hasPhoto || (uiState.omitirFotoInicio && uiState.motivoOmisionInicio.isNotBlank())) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = "Listo",
-                                tint = MaterialTheme.colorScheme.primary
+                when {
+                    uiState.isSavingPhoto -> CircularProgressIndicator(color = VerdeAccion)
+                    // Sin foto: fondo propio "Sin fotografía" y el motivo encima
+                    uiState.omitirFotoInicio -> FondoSinFoto {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = Blanco,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                        ) {
+                            MotivoOmisionField(
+                                motivo = uiState.motivoOmisionInicio,
+                                onMotivoChange = onMotivoOmisionChange,
+                                modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 10.dp)
                             )
                         }
                     }
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        when {
-                            uiState.isSavingPhoto -> CircularProgressIndicator()
-                            uiState.omitirFotoInicio -> {
-                                MotivoOmisionField(
-                                    motivo = uiState.motivoOmisionInicio,
-                                    onMotivoChange = onMotivoOmisionChange
-                                )
-                            }
-                            hasPhoto -> {
-                                val bitmap = remember(uiState.pathFotoInicio) {
-                                    BitmapFactory.decodeFile(uiState.pathFotoInicio)
-                                }
-                                if (bitmap != null) {
-                                    Image(
-                                        bitmap = bitmap.asImageBitmap(),
-                                        contentDescription = "Vista previa sector inicio",
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                }
-                            }
-                            else -> {
-                                Text(
-                                    text = "Toma una fotografía del sector antes de comenzar o marca omitir abajo.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    OutlinedButton(
-                        onClick = {
-                            val granted = ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.CAMERA
-                            ) == PackageManager.PERMISSION_GRANTED
-                            if (granted) {
-                                val (file, uri) = ImageCompressor.createTempImageUri(context, "INICIO")
-                                tempPhotoFile = file
-                                takePictureLauncher.launch(uri)
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                        enabled = !uiState.omitirFotoInicio,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 8.dp)
-                        )
-                        Text(text = if (hasPhoto) "Repetir Foto de Inicio" else "Tomar Foto de Inicio")
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onToggleOmitirFoto(!uiState.omitirFotoInicio) }
-                    ) {
-                        Checkbox(
-                            checked = uiState.omitirFotoInicio,
-                            onCheckedChange = onToggleOmitirFoto
-                        )
-                        Text(
-                            text = "Continuar sin fotografía (omitir)",
-                            style = MaterialTheme.typography.bodyMedium
+                    else -> VisorFoto(pathFoto = if (hasPhoto) uiState.pathFotoInicio else null) {
+                        BotonCamara(
+                            texto = if (hasPhoto) "Repetir foto de inicio" else "Tomar foto de inicio",
+                            onClick = tomarFoto
                         )
                     }
                 }
             }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onToggleOmitirFoto(!uiState.omitirFotoInicio) }
+            ) {
+                Checkbox(
+                    checked = uiState.omitirFotoInicio,
+                    onCheckedChange = onToggleOmitirFoto,
+                    colors = coloresCheckboxFlujo()
+                )
+                Text(
+                    text = "Continuar sin fotografía",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = AzulMarino
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
+        BotonSiguienteFlujo(enabled = canProceed, onClick = onSiguienteClick)
+    }
+}
 
-        // Botón Siguiente
-        Button(
-            onClick = onSiguienteClick,
-            enabled = canProceed,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp)
-        ) {
+/**
+ * Visor de la foto: sin foto, la ilustración de playa sucia; con foto, la vista previa.
+ * Encima van las esquinas tipo visor y [contenido] (botón de cámara).
+ */
+@Composable
+private fun VisorFoto(
+    pathFoto: String?,
+    contenido: @Composable BoxScope.() -> Unit
+) {
+    val bitmap = remember(pathFoto) { pathFoto?.let { BitmapFactory.decodeFile(it) } }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CieloClaro)
+            .esquinasVisor(if (bitmap != null) Blanco else AzulMarino),
+        contentAlignment = Alignment.Center
+    ) {
+        if (bitmap == null) {
+            // Ilustración (res/drawable-nodpi/playa_sucia_p3.webp; original en Mockup/assets/background_playa_sucia.jpg)
+            Image(
+                painter = painterResource(R.drawable.playa_sucia_p3),
+                contentDescription = null, // decorativa
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Vista previa sector inicio",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        contenido()
+    }
+}
+
+/** Fondo del área de la foto cuando se continúa sin fotografía: celeste con cámara tachada. */
+@Composable
+private fun FondoSinFoto(contenido: @Composable () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CieloClaro)
+            .border(1.dp, BordeSuave, RoundedCornerShape(16.dp))
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.NoPhotography,
+                contentDescription = null,
+                tint = AzulMarinoSuave,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(Modifier.size(8.dp))
             Text(
-                text = stringResource(id = R.string.btn_next),
-                style = MaterialTheme.typography.labelLarge
+                text = "Sin fotografía",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = AzulMarinoSuave
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        contenido()
+    }
+}
+
+@Composable
+private fun BotonCamara(texto: String, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = VerdeAccion,
+        contentColor = Blanco,
+        shadowElevation = 6.dp,
+        modifier = Modifier.padding(16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+        ) {
+            Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.size(10.dp))
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
         }
     }
+}
+
+/** Dibuja cuatro esquinas en "L" sobre el contenido, como el visor de una cámara. */
+private fun Modifier.esquinasVisor(color: Color): Modifier = drawWithContent {
+    drawContent()
+    val margen = 12.dp.toPx()
+    val largo = 28.dp.toPx()
+    val grosor = 4.dp.toPx()
+    val izq = margen
+    val der = size.width - margen
+    val arr = margen
+    val aba = size.height - margen
+    fun linea(desde: Offset, hasta: Offset) =
+        drawLine(color, desde, hasta, strokeWidth = grosor, cap = StrokeCap.Round)
+    linea(Offset(izq, arr), Offset(izq + largo, arr)); linea(Offset(izq, arr), Offset(izq, arr + largo))
+    linea(Offset(der, arr), Offset(der - largo, arr)); linea(Offset(der, arr), Offset(der, arr + largo))
+    linea(Offset(izq, aba), Offset(izq + largo, aba)); linea(Offset(izq, aba), Offset(izq, aba - largo))
+    linea(Offset(der, aba), Offset(der - largo, aba)); linea(Offset(der, aba), Offset(der, aba - largo))
 }

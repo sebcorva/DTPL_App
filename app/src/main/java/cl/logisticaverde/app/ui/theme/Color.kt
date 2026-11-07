@@ -20,3 +20,5 @@ val ErrorRojo = Color(0xFFDC2626)
 val SyncGris = Color(0xFF94A3B8)            // Sin jornadas pendientes
 val SyncAmarillo = Color(0xFFEAB308)        // Pendientes sin internet
 val SyncVerde = VerdeAccion                 // Listas para sincronizar
+val SyncGrisFondo = Color(0xFFE5E9EF)       // Fondo del ícono sin internet
+val SyncGrisIcono = Color(0xFF64748B)       // Nube tachada sin internet

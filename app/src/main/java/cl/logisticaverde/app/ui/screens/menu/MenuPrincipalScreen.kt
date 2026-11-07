@@ -77,6 +77,8 @@ import cl.logisticaverde.app.ui.theme.Blanco
 import cl.logisticaverde.app.ui.theme.BordeSuave
 import cl.logisticaverde.app.ui.theme.SyncAmarillo
 import cl.logisticaverde.app.ui.theme.SyncGris
+import cl.logisticaverde.app.ui.theme.SyncGrisFondo
+import cl.logisticaverde.app.ui.theme.SyncGrisIcono
 import cl.logisticaverde.app.ui.theme.SyncVerde
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import cl.logisticaverde.app.ui.theme.VerdeMenta
@@ -296,7 +298,7 @@ private fun TarjetaSincronizacion(
         else -> when (uiState.syncButtonState) {
             SyncButtonState.AMARILLO_SIN_INTERNET -> SyncAmarillo to "$n ${if (n == 1) "pendiente" else "pendientes"} · sin internet"
             SyncButtonState.VERDE_LISTO_PARA_SYNC -> SyncVerde to "$n ${if (n == 1) "lista" else "listas"} para sincronizar"
-            else -> SyncGris to "Sin jornadas pendientes"
+            else -> SyncGris to if (uiState.isOnline) "Sin jornadas pendientes" else "Sin internet"
         }
     }
     val colorTextoEstado = when (colorPunto) {
@@ -311,12 +313,14 @@ private fun TarjetaSincronizacion(
         sincronizando -> IconoSync.CARGANDO
         resultado == ResultadoSync.Exito -> IconoSync.EXITO
         resultado is ResultadoSync.Error -> IconoSync.ERROR
+        !uiState.isOnline -> IconoSync.SIN_INTERNET
         else -> IconoSync.NUBE
     }
     val fondoIcono by animateColorAsState(
         targetValue = when (icono) {
             IconoSync.EXITO -> VerdeAccion
             IconoSync.ERROR -> Color(0xFFFDE2E2)
+            IconoSync.SIN_INTERNET -> SyncGrisFondo
             else -> VerdeMenta
         },
         animationSpec = tween(300),
@@ -378,6 +382,9 @@ private fun TarjetaSincronizacion(
                             IconoSync.ERROR -> Icon(
                                 Icons.Outlined.CloudOff, contentDescription = "No se pudo sincronizar", tint = ErrorRojo, modifier = Modifier.size(30.dp)
                             )
+                            IconoSync.SIN_INTERNET -> Icon(
+                                Icons.Outlined.CloudOff, contentDescription = "Sin internet", tint = SyncGrisIcono, modifier = Modifier.size(30.dp)
+                            )
                             IconoSync.NUBE -> Icon(
                                 Icons.Outlined.CloudUpload, contentDescription = null, tint = AzulMarino, modifier = Modifier.size(30.dp)
                             )
@@ -414,7 +421,7 @@ private fun TarjetaSincronizacion(
     }
 }
 
-private enum class IconoSync { NUBE, CARGANDO, EXITO, ERROR }
+private enum class IconoSync { NUBE, SIN_INTERNET, CARGANDO, EXITO, ERROR }
 
 private const val DURACION_EXITO_MS = 2_500L
 private const val DURACION_ERROR_MS = 4_000L

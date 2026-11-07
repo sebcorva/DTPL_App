@@ -80,7 +80,7 @@
 
 ## 🔐 Épica 7: Seguridad y Sincronización Robusta
 
-### `[ISSUE-20]` Supabase esquema v3: RLS, RPC `sincronizar_jornada`, bucket solo-INSERT y vistas · 1 d ✅ (falta ejecutar en Supabase)
+### `[ISSUE-20]` Supabase esquema v3: RLS, RPC `sincronizar_jornada`, bucket solo-INSERT y vistas · 1 d ✅
 * **Descripción:** PRD §5.2, §5.3 y §5.5. Actualizar `docs/supabase_schema.sql` para que sea re-ejecutable.
 * **Criterios de aceptación:**
   - [x] `DROP TABLE usuario`; quitar `id_usuario` de `jornada`; agregar `total_participantes`, `sectores_ids` (`text[]` o CSV) y crear `participante_jornada` con `UNIQUE (id_registro, lower(trim(nombre)))`.
@@ -91,12 +91,12 @@
   - [x] `vista_reporte_jornadas` actualizada (columna `total_participantes` en lugar de `id_usuario`, participantes agregados) y `REVOKE SELECT … FROM anon, authenticated`.
   - [x] Nueva `vista_densidad_diaria`: por fecha local (`America/Santiago`), área con sectores sin repetir, kg del día y densidad; revocada para `anon`.
   - [x] Storage `evidencias-fotos`: público para lectura, política `INSERT` para `anon`; **eliminar** las políticas de `UPDATE` (y no crear `DELETE`).
-  - [ ] ⏭️ Verificación manual con la clave pública: `SELECT` a `jornada` → denegado; `PATCH` a `herramienta_catalogo` → denegado; subir una foto con un nombre existente → rechazado; RPC con payload válido → `INSERTADA`, repetida → `YA_EXISTIA`.
+  - [x] Verificación manual con la clave pública (07-11-2026): `SELECT` a `jornada` y a `jornada_rechazada` → denegado (401); `PATCH` a `herramienta_catalogo` → denegado (401); listar el bucket → vacío; RPC con payload válido → `INSERTADA` (sincronización real desde la app). *Sin probar a mano: subir dos veces la misma foto (paso 5 de la sección 8).*
 * **Notas de cierre (29-10-2026):**
   - Probado en Postgres 15 local (Docker) con roles `anon`/`authenticated`/`service_role` y `storage` simulados: migración desde v2 sin perder jornadas, re-ejecución sin errores, `anon` denegado en tablas de jornada, vistas y `UPDATE` de inventario; RPC `INSERTADA` → `YA_EXISTIA`; 9 payloads inválidos rechazados sin dejar filas; densidad del día sin repetir sectores.
   - Extras: el servidor recalcula `nombre_lider`, `voluntarios_csv`, `total_participantes`, `sectores_csv`, `area_total_m2` y `kg_totales`; las URLs de fotos deben ser de este bucket y de esta jornada; una jornada antigua sincronizada tarde no pisa el estado de una herramienta usada después; el bucket acepta solo JPEG ≤ 5 MB con el nombre `REG-…_{1|2|3}_{inicio|limpio|sacos}.jpg` y `anon` no puede listarlo.
   - Contrato del payload en el encabezado de la sección 4 del SQL y ejemplo en `docs/rpc_ejemplo.json`. Todos los errores de validación responden HTTP 400.
-  - **Pendiente (usuario):** ejecutar `docs/supabase_schema.sql` en el SQL Editor y correr la verificación de la sección 8 del archivo.
+  - ✅ (07-11-2026) Esquema v4 ejecutado en Supabase y verificado (ver ISSUE-31 y ISSUE-42).
 
 ### `[ISSUE-21]` Cliente de sincronización: RPC, fotos idempotentes y "sin clave = error" · 1 d ✅
 * **Descripción:** PRD §5.1, §5.4, BR-09, BR-10, RNF-05.
@@ -113,7 +113,7 @@
   - Si la RPC rechaza la jornada (HTTP 400), el mensaje de validación del servidor llega al usuario (ej. "Promedio por saco supera 25 kg").
   - 9 tests en `JornadaSyncRepositoryTest`, incluido el contrato JSON (`{"p": {"jornada": …}}`) contra los nombres del SQL.
   - Verificado que `preReleaseBuild` pasa con claves configuradas; el caso sin claves no se probó para no tocar `local.properties`.
-  - **Pendiente de prueba real:** sincronizar contra Supabase después de ejecutar el SQL de ISSUE-20.
+  - ✅ Prueba real (07-11-2026): jornada sincronizada desde el emulador contra Supabase y guardada en `jornada`.
 
 ### `[ISSUE-22]` Navegación protegida y numeración "Pantalla N de 10" · 0,5 d ✅
 * **Descripción:** RF-NAV-1 a RF-NAV-5, BR-11.
@@ -146,7 +146,7 @@
 
 > Decisiones tomadas en la ronda de preguntas del 31-10-2026. Room y Supabase se **destruyen y se vuelven a crear** (los datos actuales son de prueba).
 
-### `[ISSUE-31]` Modelo v4: playas, brigada, fecha, sin herramientas, motivos y topes · 1 d ✅ (falta ejecutar en Supabase)
+### `[ISSUE-31]` Modelo v4: playas, brigada, fecha, sin herramientas, motivos y topes · 1 d ✅
 * **Criterios de aceptación:**
   - [x] Room v4 (destructiva desde 1–3): nueva `playa_catalogo` (`id_playa`, `nombre_playa`); `sector_catalogo.id_playa`.
   - [x] `jornada`: `cuadrilla` → `brigada`; nuevas `id_playa`, `nombre_playa`, `fecha_jornada` (AAAA-MM-DD, hora de Chile, se fija al crear la jornada en P2), `sin_herramientas`, `motivo_omision_inicio|limpio|sacos`.
@@ -158,7 +158,7 @@
   - SQL probado en Postgres 15 local (Docker) con roles `anon`/`authenticated`/`service_role` simulados: reset + esquema dos veces y re-ejecución del esquema sin errores; 27 casos (válida → `INSERTADA`, repetida → `YA_EXISTIA`, sin herramientas válida, 19 rechazos con mensaje claro, permisos de `anon`, vistas eliminadas).
   - La RPC también rechaza herramientas o tipos de basura repetidos con HTTP 400 (antes podían responder 409).
   - 30 tests unitarios en verde (7 nuevos de v4).
-  - **Pendiente (usuario):** ejecutar `docs/supabase_reset_v4.sql` y luego `docs/supabase_schema.sql` en el SQL Editor, y correr la verificación de la sección 8. Desinstalar la app de prueba o dejar que Room v4 borre sus datos al actualizar.
+  - ✅ (07-11-2026) `supabase_reset_v4.sql` + `supabase_schema.sql` ejecutados en Supabase. La primera ejecución del esquema quedó incompleta (faltaban `jornada_rechazada` y la RPC); al volver a ejecutarlo quedó completo.
 
 ### `[ISSUE-32]` Playas: selector en P2 y sectores por playa · 0,5 d ✅
 * **Criterios de aceptación:**
@@ -235,7 +235,7 @@
   - [ ] Keystore de firma: contraseña y respaldo **por definir** (no se sube a git).
   - [ ] Quitar `org.gradle.java.home` de `gradle.properties` (moverlo a `~/.gradle/gradle.properties`).
   - [x] ~~Sincronizar las jornadas pendientes antes de instalar la v3~~ — descartado: los datos de prueba se pueden perder (la migración a v3 los borra).
-  - [ ] Ejecutar `supabase_schema.sql` v3 y la verificación manual de ISSUE-20.
+  - [x] Ejecutar `supabase_schema.sql` (v4) y la verificación manual de ISSUE-20 (07-11-2026).
   - [ ] Configurar Script Properties en Sheets y ejecutar `instalarTriggersAutomaticos()`.
   - [ ] `./gradlew testDebugUnitTest` en verde y APK release generado.
 
@@ -269,6 +269,15 @@
 * ✅ `allowBackup="false"` + `dataExtractionRules` (31-10-2026): nada se respalda en la nube de Google ni se copia a un teléfono nuevo.
 * Pendientes: bucket público (fotos visibles con la URL, Ley 21.719); límite del bucket de 5 MB (la app sube ~180 KB); respaldo de la keystore de firma.
 
+### `[ISSUE-43]` 📝 Catálogos locales que no se actualizan al borrar en el servidor — anotado, por decidir
+* **Hallazgo (07-11-2026, prueba de rechazo de ISSUE-42):** `sincronizarCatalogosMaestros()` solo hace *upsert*: si el administrador borra (o cambia de playa) un sector, una herramienta o una playa en Supabase, la app conserva su copia local. El dato borrado sigue apareciendo en P2–P4, la validación de la P9 lo acepta y la jornada termina **rechazada** por la RPC al sincronizar ("Sector desconocido o de otra playa", "Herramienta desconocida", "Playa desconocida").
+* **Riesgo en el piloto:** cualquier ajuste de catálogo hecho por el administrador provoca rechazos en los teléfonos que no se actualicen; hoy la única salida es restaurar el dato en el servidor y usar "Reintentar".
+* **Opciones:**
+  1. Reemplazar el catálogo local por el del servidor al descargarlo (borrar lo que ya no viene), sin tocar jornadas `EN_CURSO` / `PENDIENTE_SYNC` que lo usen.
+  2. Marcar como "inactivo" en vez de borrar (columna `activo` en Supabase); la app oculta los inactivos en jornadas nuevas y el servidor sigue aceptándolos en jornadas ya hechas.
+  3. Acordar con el administrador que los catálogos no se borran durante el piloto (solo documentar).
+* Relacionado: ISSUE-39 (inventario de herramientas) y BR-10 (no pisar el estado de herramientas en jornadas pendientes).
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 
@@ -297,7 +306,12 @@
   - [x] ~~Crashlytics~~: decidido no usarlo por ahora (se evalúa después del piloto).
   - [x] Tests unitarios por cada tipo de error (404 PGRST202, 400 P0001, 401, 500, timeout, cancelación).
 
-* **Notas de cierre (31-10-2026):** 56 tests unitarios en verde (18 de sincronización, 11 de `ValidadorJornada`, 21 de reglas, 6 de resumen). SQL probado en Postgres 15 local: instalación, reset y reinstalación sin errores; 34 casos OK (19 rechazos → `RECHAZADA: …`, registro con `intentos`, `resuelta` tras reintento, casts inválidos, anon sin acceso a `jornada_rechazada` ni a la función interna). Verificado en emulador: P1 con jornada rechazada (texto + globo) y Reportes con `[ Reintentar ]`. **Pendiente del usuario:** ejecutar `supabase_reset_v4.sql` + `supabase_schema.sql` (incluye `NOTIFY pgrst`), y probar "Reintentar" contra Supabase.
+* **Notas de cierre (31-10-2026):** 56 tests unitarios en verde (18 de sincronización, 11 de `ValidadorJornada`, 21 de reglas, 6 de resumen). SQL probado en Postgres 15 local: instalación, reset y reinstalación sin errores; 34 casos OK (19 rechazos → `RECHAZADA: …`, registro con `intentos`, `resuelta` tras reintento, casts inválidos, anon sin acceso a `jornada_rechazada` ni a la función interna). Verificado en emulador: P1 con jornada rechazada (texto + globo) y Reportes con `[ Reintentar ]`. 
+* **Prueba contra Supabase (07-11-2026), todo OK:**
+  - Sin internet: la jornada queda "Pendiente de sincronización" y la P1 muestra "1 pendiente · sin internet" sin permitir sincronizar; al volver el internet se sincroniza.
+  - Servidor en mantención (tabla `playa_catalogo` renombrada temporalmente): la P1 muestra "Servidor en mantención" y no sincroniza; en Reportes la jornada sigue pendiente.
+  - Rechazo (sector `SECTOR-TEST` borrado en el servidor tras cerrar la jornada sin internet): `ERROR_SYNC` con "Sector desconocido o de otra playa", globo rojo y registro en `jornada_rechazada`; "Reintentar" sin cambios → rechazo otra vez (`intentos` 2); con el sector restaurado → sincronizada y `resuelta = true`.
+  - Ajuste de UI: sin internet, la tarjeta de sincronización muestra una nube tachada gris y, si no hay pendientes, el texto "Sin internet".
 ---
 
 ## Orden y Estimación
@@ -310,7 +324,7 @@
 | 4 | **ISSUE-31 → 32 → 33 → 34 → 35 → 36** (cambios v4) | 2,75 d |
 | 5 | ✅ ISSUE-24 → 25 → 26 | 2,25 d |
 | 6 | ISSUE-41 ✅ (UI P1), ISSUE-42 → 28 → 29 | 3,5 d |
-| 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38 | 1,75 d |
+| 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38, ISSUE-43 (catálogos, por decidir) | 1,75 d |
 | **Total** | | **≈ 16 días** |
 
 ```mermaid

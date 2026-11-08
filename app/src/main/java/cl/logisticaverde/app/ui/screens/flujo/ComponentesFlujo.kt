@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CheckboxDefaults
@@ -59,8 +62,10 @@ import cl.logisticaverde.app.ui.theme.AzulPetroleoClaro
 import cl.logisticaverde.app.ui.theme.Blanco
 import cl.logisticaverde.app.ui.theme.BordeSuave
 import cl.logisticaverde.app.ui.theme.CieloClaro
+import cl.logisticaverde.app.ui.theme.ErrorRojo
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
+import java.util.Locale
 
 /*
  * Piezas comunes del rediseño de las pantallas del flujo (P2 ISSUE-44, P3 ISSUE-46, P4 ISSUE-48, P6 ISSUE-51),
@@ -68,6 +73,9 @@ import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
  */
 
 val FormaTarjetaFlujo = RoundedCornerShape(24.dp)
+
+/** Formato chileno para números del flujo: miles con punto y decimales con coma ("1.453", "3,25 km"). */
+internal val LocaleChile: Locale = Locale.forLanguageTag("es-CL")
 val FormaCampoFlujo = RoundedCornerShape(12.dp)
 
 @Composable
@@ -321,5 +329,26 @@ fun BotonCamaraFlujo(texto: String, onClick: () -> Unit) {
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+/** Aviso de una línea: verde con ✓ si todo va bien, rojo con ⚠ en error (P4 escaneo, P8 pesaje). */
+@Composable
+fun MensajeFlujo(texto: String, esError: Boolean, modifier: Modifier = Modifier) {
+    val color = if (esError) ErrorRojo else VerdeAccionOscuro
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = modifier.padding(horizontal = 4.dp)) {
+        Icon(
+            imageVector = if (esError) Icons.Filled.Warning else Icons.Filled.CheckCircle,
+            contentDescription = null,
+            tint = color,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = texto,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = color
+        )
     }
 }

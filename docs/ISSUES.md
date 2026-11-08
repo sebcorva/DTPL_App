@@ -373,6 +373,24 @@
   - [x] Tests en verde (66).
   - [x] Verificado en emulador (1080×2400): ambos visores con su ilustración y botón de cámara, y "Continuar sin fotografía" con el fondo "Sin fotografía" y el motivo cabiendo en el visor. *Sin probar en emulador: la toma de foto real.*
 
+### `[ISSUE-52]` ✅ Rediseño UI: Pantalla 8 "Resumen y pesaje" · 0,5 d
+> **Decisiones del 08-11-2026** (mismo formato de las pantallas anteriores, con la paleta y Nunito actuales; solo visual salvo el texto del aviso):
+> 1. Título "Resumen y pesaje" (antes "Resumen y Pesaje en Acopio").
+> 2. Tarjeta "Resumen del recorrido": una fila por dato con ícono a la izquierda y valor en negrita a la derecha — Líder ("Nombre · Brigada A"), Horario ("10:05 – 11:47"), **Tiempo transcurrido** (nuevo, "01:42:15", mismo formato del cronómetro de la P5, entre inicio y fin de la limpieza) y Distancia ("3,25 km", con coma).
+> 3. Tarjeta "Pesaje en acopio": desplegable del encargado con el estilo de la P4, placeholder "Elige al encargado de pesaje" (sin "(Obligatorio)"); "Otra persona" sigue abriendo el campo del nombre.
+> 4. Campos con textos cortos ("Cantidad de sacos", "Kg basura normal", "Kg basura reciclable"), sufijo "sacos"/"kg" dentro y un ícono a la derecha, fuera del campo: saco propio (`ic_saco.xml`) verde, basurero azul petróleo y reciclaje verde.
+> 5. Bloque `VerdeMenta` con "Total extraído" en grande y "Promedio por saco", más una barra del promedio frente al máximo ("Máx. 25 kg por saco (Ley 20.949)"), en `RojoCalido` si lo supera.
+> 6. Aviso de error como el de la P4 (una línea roja con ⚠). Texto de la Ley del Saco acortado: "El promedio por saco supera los 25 kg (Ley 20.949)."
+> 7. Contenido desplazable (teclado) y botón Siguiente fijo abajo (`BotonSiguienteFlujo`).
+> 8. Decimales: se mantiene que "3,5" se vea como "3.5" al escribir. 📝 Mejora menor pendiente: mostrar la coma en los campos de kg.
+* **Criterios de aceptación:**
+  - [x] `PesajeResumenScreen` según las decisiones 1–8; sin cambios en reglas de negocio ni en Room (solo el texto del aviso de la Ley del Saco).
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador (1080×2400): resumen con tiempo transcurrido, íconos de los campos, 2 sacos + 10,5 + 5 kg → "15,5 kg" y "7,75 kg" con barra verde; 1 saco + 30 kg → promedio, barra y texto en `RojoCalido` y aviso rojo; aviso de máximo de sacos.
+* **Ajuste del 08-11-2026 (resumen más corto):** las 4 filas pasan a una grilla 2×2 compacta (ícono en círculo menta, etiqueta chica y valor en negrita), sin divisores, para no desplazar tanto la pantalla. La brigada va en la etiqueta ("Líder · Brigada A") y el valor solo con el nombre, para que nada se corte.
+* **Ajuste del 08-11-2026 (sacos sin teclado):** "Cantidad de sacos" pasa a contador [–] número [+] (0 a 100; [–] blanco con borde y [+] verde como en la P5, gris al llegar al límite) dentro del mismo recuadro con etiqueta y el ícono de saco afuera. Un toque = 1 saco; mantener presionado repite (tras 0,4 s, cada 0,09 s). El número no se selecciona ni abre el teclado. Sin vibración. Los kg siguen con teclado (llevan decimales de la balanza y pueden llegar a 2.500 kg).
+* `MensajeEscaneo` de la P4 pasa a `ComponentesFlujo.kt` como `MensajeFlujo` (P4 y P8), junto con `LocaleChile` (antes en la P5).
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

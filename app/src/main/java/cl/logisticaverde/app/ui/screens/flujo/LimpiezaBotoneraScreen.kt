@@ -83,7 +83,6 @@ import java.text.NumberFormat
 import java.util.Locale
 
 /** Formato chileno: punto de miles ("1.453") y coma decimal ("3,25 km"). */
-private val LocaleChile: Locale = Locale.forLanguageTag("es-CL")
 
 /**
  * Pantalla 5 "Registro de residuos" (diseño ISSUE-49):

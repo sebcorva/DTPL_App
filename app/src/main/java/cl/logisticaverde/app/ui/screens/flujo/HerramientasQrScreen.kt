@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Handyman
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Handyman
 import androidx.compose.material3.Badge
@@ -281,7 +280,7 @@ fun HerramientasQrScreen(
             ) {
                 Column {
                     Spacer(Modifier.height(8.dp))
-                    MensajeEscaneo(texto = ultimoMensaje, esError = uiState.qrFeedbackEsError)
+                    MensajeFlujo(texto = ultimoMensaje, esError = uiState.qrFeedbackEsError)
                 }
             }
             Spacer(Modifier.height(4.dp))
@@ -385,27 +384,6 @@ fun HerramientasQrScreen(
 
         Spacer(Modifier.height(16.dp))
         BotonSiguienteFlujo(enabled = canProceed, onClick = onSiguienteClick)
-    }
-}
-
-/** Resultado del último escaneo: verde con ✓ al agregar, rojo con ⚠ en error (decisión 6). */
-@Composable
-private fun MensajeEscaneo(texto: String, esError: Boolean) {
-    val color = if (esError) ErrorRojo else VerdeAccionOscuro
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 4.dp)) {
-        Icon(
-            imageVector = if (esError) Icons.Filled.Warning else Icons.Filled.CheckCircle,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = texto,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = color
-        )
     }
 }
 

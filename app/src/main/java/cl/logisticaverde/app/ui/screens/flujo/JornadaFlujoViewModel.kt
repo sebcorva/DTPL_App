@@ -40,7 +40,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
-import java.util.Locale
 import java.util.UUID
 
 data class EquipoSeleccionUiState(
@@ -992,8 +991,8 @@ class JornadaFlujoViewModel(
             return "Máximo ${TopesJornada.MAX_KG_TOTALES.toInt()} kg por jornada. Revisa los kilos."
         }
         if (state.excedeLimiteLeySaco) {
-            val promedioStr = String.format(Locale.US, "%.1f", state.kgPromedioPorSaco)
-            return "Ley N° 20.949 ('Ley del Saco'): El peso promedio por saco ($promedioStr kg/saco) supera el máximo permitido de 25 kg por saco."
+            // ISSUE-52: texto corto; el detalle del promedio ya se ve en la barra de la P8
+            return "El promedio por saco supera los 25 kg (Ley 20.949)."
         }
         return null
     }

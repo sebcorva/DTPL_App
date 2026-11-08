@@ -407,6 +407,19 @@
   - [x] Verificado en emulador (1080×2400) con 10 kg normal y 5 kg reciclable: encabezados con ícono y kilos, opciones en botones (sin "No aplicable"), guía de despacho visible solo con DIMAO, botón "Guardar jornada" sin ícono. *Sin ver en emulador: la nota de 0 kg.*
 * `formatoKg` pasa de la P8 a `ComponentesFlujo.kt` (P8 y P9).
 
+### `[ISSUE-54]` ✅ Animación de entrada al abrir la app · 0,25 d
+> **Decisiones del 08-11-2026:**
+> 1. Unos 2 s: pantalla completa `VerdeAccion` que en ~1 s se transforma suavemente en el degradado celeste de la app (`CieloClaro` → `CieloBlanco`); con el fondo casi celeste aparecen el logo y "Deja tu Playa Limpia" (fundido + leve crecimiento), pausa corta y fundido hacia el inicio.
+> 2. Logo y título centrados; toda la animación se desvanece sobre el inicio (sin deslizarse al encabezado).
+> 3. Logo y título iguales al encabezado del inicio (se reutiliza el mismo componente).
+> 4. Pantalla de inicio del sistema (Android 12+) verde y sin ícono, y fondo de ventana verde en Android 8–11, para que no haya corte con la animación. Solo tema, sin librerías nuevas.
+> 5. Solo al abrir la app desde cero (no al volver desde otra app ni al girar). Sin botón para saltarla; mientras dura, los toques no llegan al inicio.
+> 6. Con las animaciones del sistema desactivadas, se salta.
+* **Criterios de aceptación:**
+  - [x] Animación según las decisiones 1–6 (`ui/screens/inicio/IntroAnimada.kt`, encima del inicio en `MainActivity`; el encabezado del inicio pasa a `EncabezadoApp`, compartido).
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador con capturas en secuencia (a velocidad normal y con las animaciones del sistema ×10): pantalla del sistema verde sin ícono → verde a celeste → logo y título centrados → inicio. En la versión de desarrollo el verde dura ~1,5 s más mientras carga la app la primera vez; se espera más corto en la versión de producción.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

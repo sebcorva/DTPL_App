@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.LogisticaVerde" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.LogisticaVerde" parent="android:Theme.Material.Light.NoActionBar">
+        <!-- Verde mientras carga, para empalmar con la animación de entrada (ISSUE-54) -->
+        <item name="android:windowBackground">@color/verde_accion</item>
+    </style>
 </resources>

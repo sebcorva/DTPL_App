@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mismo valor que VerdeAccion (Color.kt): fondo de la ventana mientras carga la app (ISSUE-54) -->
+    <color name="verde_accion">#FF2EAE7A</color>
+</resources>

@@ -126,7 +126,7 @@ fun MenuPrincipalScreen(
         ) {
             Spacer(Modifier.height(4.dp))
             Box(modifier = Modifier.fillMaxWidth()) {
-                Encabezado()
+                EncabezadoApp()
                 if (uiState.jornadaEnCurso != null) {
                     IconButton(
                         onClick = { confirmarEliminar = true },
@@ -187,8 +187,9 @@ private fun DialogoEliminarJornada(onConfirmar: () -> Unit, onCancelar: () -> Un
     )
 }
 
+/** Logo con anillo blanco y "Deja tu / Playa Limpia" (P1 y animación de entrada, ISSUE-54). */
 @Composable
-private fun Encabezado() {
+internal fun EncabezadoApp() {
     Row(verticalAlignment = Alignment.CenterVertically) {
         // Logo (res/drawable-nodpi/logo_app.webp) con anillo blanco, como en el diseño
         Box(

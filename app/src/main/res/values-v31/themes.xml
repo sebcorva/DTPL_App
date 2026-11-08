@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+: la pantalla de inicio del sistema queda verde y sin ícono (ISSUE-54) -->
+    <style name="Theme.LogisticaVerde" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/verde_accion</item>
+        <item name="android:windowSplashScreenBackground">@color/verde_accion</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_transparente</item>
+    </style>
+</resources>

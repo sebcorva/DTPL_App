@@ -65,6 +65,8 @@ import cl.logisticaverde.app.ui.theme.CieloClaro
 import cl.logisticaverde.app.ui.theme.ErrorRojo
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 /*
@@ -76,6 +78,10 @@ val FormaTarjetaFlujo = RoundedCornerShape(24.dp)
 
 /** Formato chileno para números del flujo: miles con punto y decimales con coma ("1.453", "3,25 km"). */
 internal val LocaleChile: Locale = Locale.forLanguageTag("es-CL")
+
+/** Kilos en formato chileno, hasta 2 decimales: 15.5 → "15,5", 1234 → "1.234" (P8 y P9). */
+internal fun formatoKg(kg: Float): String =
+    DecimalFormat("#,##0.##", DecimalFormatSymbols(LocaleChile)).format(kg.toDouble())
 val FormaCampoFlujo = RoundedCornerShape(12.dp)
 
 @Composable
@@ -144,9 +150,18 @@ fun BotonSeleccionFlujo(
     }
 }
 
-/** Botón Siguiente: píldora verde con flecha, como "Iniciar jornada" (decisión 07-11-2026). */
+/**
+ * Botón Siguiente: píldora verde con flecha, como "Iniciar jornada" (decisión 07-11-2026).
+ * En la última pantalla cambia el [texto] y va sin [icono] ("Guardar jornada", ISSUE-53).
+ */
 @Composable
-fun BotonSiguienteFlujo(enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BotonSiguienteFlujo(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    texto: String = stringResource(id = R.string.btn_next),
+    icono: ImageVector? = Icons.AutoMirrored.Filled.KeyboardArrowRight
+) {
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -159,18 +174,20 @@ fun BotonSiguienteFlujo(enabled: Boolean, onClick: () -> Unit, modifier: Modifie
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = stringResource(id = R.string.btn_next),
+                text = texto,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 modifier = Modifier.align(Alignment.Center)
             )
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(30.dp)
-            )
+            if (icono != null) {
+                Icon(
+                    icono,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .size(30.dp)
+                )
+            }
         }
     }
 }

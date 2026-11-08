@@ -391,6 +391,22 @@
 * **Ajuste del 08-11-2026 (sacos sin teclado):** "Cantidad de sacos" pasa a contador [–] número [+] (0 a 100; [–] blanco con borde y [+] verde como en la P5, gris al llegar al límite) dentro del mismo recuadro con etiqueta y el ícono de saco afuera. Un toque = 1 saco; mantener presionado repite (tras 0,4 s, cada 0,09 s). El número no se selecciona ni abre el teclado. Sin vibración. Los kg siguen con teclado (llevan decimales de la balanza y pueden llegar a 2.500 kg).
 * `MensajeEscaneo` de la P4 pasa a `ComponentesFlujo.kt` como `MensajeFlujo` (P4 y P8), junto con `LocaleChile` (antes en la P5).
 
+### `[ISSUE-53]` ✅ Rediseño UI: Pantalla 9 "Entrega y destino de sacos" · 0,5 d
+> **Decisiones del 08-11-2026** (mismo formato de las pantallas anteriores, con la paleta y Nunito actuales; solo visual):
+> 1. Título "Entrega y destino de sacos" (antes "Entrega y Destino de Sacos").
+> 2. Dos tarjetas, "Basura normal" y "Basura reciclable", sin numeración; junto al subtítulo el mismo ícono de la P8 (basurero / reciclaje) y a la derecha una etiqueta con los kilos del pesaje ("10,5 kg", con coma).
+> 3. Opciones de destino con `BotonSeleccionFlujo` (como la brigada en la P2 y los sectores en la P3): una por fila a todo el ancho, verde la elegida y celeste las demás (antes radio buttons).
+> 4. Con kilos se oculta "No aplicable" (no se puede elegir). Con 0 kg solo se muestra la nota "Sin kilos de basura normal: no aplica" (o reciclable); "No aplicable" queda guardado como hoy. Solo visual: reglas sin cambios.
+> 5. N° guía de despacho: misma regla (solo con "Entregado a camión DIMAO"), campo con el estilo del flujo, etiqueta "N° guía de despacho (opcional)" y ejemplo "GD-2026-0041".
+> 6. Botón final "Guardar jornada" en la píldora verde (antes "Guardar"); `BotonSiguienteFlujo` acepta texto e ícono opcional. ~~Con ✓ al final~~ — **sin ícono (ajuste del 08-11-2026)**.
+> 7. Contenido desplazable y botón fijo abajo.
+> 8. Sin cambios de lógica; los textos de las opciones se guardan tal cual en Room y Supabase.
+* **Criterios de aceptación:**
+  - [x] `EntregaSacosScreen` según las decisiones 1–8; sin cambios en reglas de negocio ni en Room.
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador (1080×2400) con 10 kg normal y 5 kg reciclable: encabezados con ícono y kilos, opciones en botones (sin "No aplicable"), guía de despacho visible solo con DIMAO, botón "Guardar jornada" sin ícono. *Sin ver en emulador: la nota de 0 kg.*
+* `formatoKg` pasa de la P8 a `ComponentesFlujo.kt` (P8 y P9).
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

@@ -83,8 +83,6 @@ import cl.logisticaverde.app.ui.theme.SyncGrisFondo
 import cl.logisticaverde.app.ui.theme.SyncGrisIcono
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -526,7 +524,3 @@ private fun BloqueTotales(kgTotales: Float, promedio: Float, excede: Boolean) {
         }
     }
 }
-
-/** Kilos en formato chileno, hasta 2 decimales: 15.5 → "15,5", 1234 → "1.234". */
-private fun formatoKg(kg: Float): String =
-    DecimalFormat("#,##0.##", DecimalFormatSymbols(LocaleChile)).format(kg.toDouble())

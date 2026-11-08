@@ -337,6 +337,27 @@
 * `FondoVacioFlujo` y `Modifier.esquinasVisor` pasan a `ComponentesFlujo.kt` (compartidos con la P3).
 * 📝 **Pendiente menor:** si el líder elige "No permitir" de forma definitiva, Android ya no muestra el diálogo y "Permitir cámara" no hace nada (igual que antes del rediseño). Mejora posible: en ese caso abrir los ajustes de la app.
 
+### `[ISSUE-49]` ✅ Rediseño UI: Pantalla 5 "Registro de residuos" · 0,5 d
+> **Decisiones del 07-11-2026** (según la imagen de diseño, con la paleta y Nunito actuales; solo visual):
+> 1. Título "Registro de residuos" (antes "Limpieza y Conteo").
+> 2. Tarjeta superior sobre la ilustración `portada_p1`: "Ítems registrados" con el total en grande (formato chileno, "1.453") y la hoja en un círculo blanco; franja inferior "Distancia: 3,25 km" (sin "(tiempo real)") con ícono de ubicación verde si el GPS está activo y gris si no. **Ajuste del 07-11-2026:** el ícono de ubicación va a la izquierda, pegado a la distancia, y a la derecha el tiempo de limpieza en vivo ("00:42:15", desde "Comenzar limpieza"; se congela al finalizar).
+> 3. Grilla de 3 columnas con el nombre completo del catálogo en hasta 2 líneas (10 tipos → 4 filas, la última con uno; se desplaza si no cabe). Sin "Origen: …". Nombres cortos: mejora futura en ISSUE-50.
+> 4. Recuadro `VerdeMenta`, número azul marino extra negrita; [-1] blanco con borde (deshabilitado en 0) y [+1] `VerdeAccion`. ~~[+10] `VerdeAccionOscuro`~~ — **se quita el [+10] (07-11-2026)**.
+> 5. Un solo botón abajo: "Comenzar limpieza" (píldora verde con play; la grilla se ve atenuada y bloqueada) → "Finalizar limpieza" (~~píldora azul marino con escoba~~ → **píldora `RojoCalido` #E0533D sin ícono**, ajuste del 07-11-2026; el "Sí, finalizar" del diálogo usa el mismo color). Se mantiene el diálogo de confirmación, con el estilo del flujo.
+> 6. Sin barra de navegación inferior (pantalla del flujo).
+> 7. Vibración muy breve al tocar -1, +1 y +10.
+* **Criterios de aceptación:**
+  - [x] `LimpiezaBotoneraScreen` según las decisiones 1–7; sin cambios en reglas de negocio, GPS ni Room.
+  - [x] Tests en verde (61).
+  - [x] Verificado en emulador (1080×2400): tarjeta superior con total y distancia, conteo (+1, +10, +10, -1 → 20 en el recuadro y en el total; antes de quitar el [+10]), [-1] deshabilitado en 0, diálogo de finalizar. *Sin ver en emulador: el estado "Comenzar limpieza" (la jornada de prueba ya tenía la limpieza iniciada).*
+* Nombres largos: alto fijo de 2 líneas por recuadro y la letra baja de 13sp hasta 11sp si no cabe ("Toallitas húmedas / higiene"), para que las filas queden parejas.
+* Con 10 tipos, la última fila queda bajo el borde y se ve desplazando la grilla.
+* **Ajuste del 07-11-2026 (tarjetas sobrantes):** la grilla se adapta a cualquier cantidad de tipos para que ninguna tarjeta quede sola: múltiplo de 3 → filas de 3; sobran 2 → las 2 últimas a media fila cada una; sobra 1 → la última a todo el ancho en versión horizontal (nombre, número y botones en una línea). Regla en `spanTarjetaResiduo` (grilla de 6 partes) con test.
+
+### `[ISSUE-50]` 📝 Nombres cortos para los tipos de residuo — mejora futura
+* **Hallazgo (07-11-2026, ISSUE-49):** los nombres del catálogo (`tipo_basura_catalogo.nombre_visible`) son largos ("Envoltorios / bolsas plásticas") y en la grilla de 3 columnas de la P5 ocupan 2 líneas con letra pequeña.
+* **Propuesta:** columna `nombre_corto` en Supabase, `CatalogoSeedData` y `supabase_schema.sql` ("Colillas", "PET", "Latas"…), usada solo en la grilla; los reportes siguen con el nombre completo. Coordinar con el administrador.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

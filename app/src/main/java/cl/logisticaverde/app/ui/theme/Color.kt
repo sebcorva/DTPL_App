@@ -15,6 +15,7 @@ val CieloBlanco = Color(0xFFF3FAFD)         // Degradado de fondo (abajo)
 val Blanco = Color(0xFFFFFFFF)
 val BordeSuave = Color(0xFFD5E7EE)
 val ErrorRojo = Color(0xFFDC2626)
+val RojoCalido = Color(0xFFE0533D)         // Advertencia cálida: "Finalizar limpieza" (P5, ISSUE-49)
 
 // Estado de sincronización (P1): punto de color
 val SyncGris = Color(0xFF94A3B8)            // Sin jornadas pendientes

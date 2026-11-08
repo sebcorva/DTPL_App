@@ -420,6 +420,20 @@
   - [x] Tests en verde (66).
   - [x] Verificado en emulador con capturas en secuencia (a velocidad normal y con las animaciones del sistema ×10): pantalla del sistema verde sin ícono → verde a celeste → logo y título centrados → inicio. En la versión de desarrollo el verde dura ~1,5 s más mientras carga la app la primera vez; se espera más corto en la versión de producción.
 
+### `[ISSUE-55]` ✅ Rediseño UI: Pantalla 7 "Devolución de herramientas" · 0,5 d
+> **Decisiones del 08-11-2026** (mismo formato de las pantallas anteriores, con la paleta y Nunito actuales; solo visual):
+> 1. Título "Devolución de herramientas" (antes "Estado de Devolución de Herramientas").
+> 2. Una sola tarjeta: subtítulo "Estado al devolver" con el ícono de herramienta y el globo de cantidad (como "Herramientas agregadas" en la P4), la ayuda "Marca cómo vuelve cada herramienta" y la lista desplazable (antes una tarjeta por herramienta).
+> 3. Cada herramienta: nombre en negrita y tres botones del mismo ancho; el elegido con su color — Operativo `VerdeAccion`, Dañado `SyncAmarillo`, Extraviado `RojoCalido`; los demás celestes con borde (como la P2 y la P3). Herramientas separadas por una línea fina.
+> 4. ~~Resumen sobre la lista con chips de colores ("8 operativas · 1 dañada · 0 extraviadas")~~ — **se quita (ajuste del 08-11-2026)**.
+> 5. Todas parten en "Operativo", como hoy.
+> 6. Botón Siguiente en píldora verde **sin flecha**.
+> 7. Sin cambios de lógica (estados, guardado y paso a la P8).
+* **Criterios de aceptación:**
+  - [x] `EstadoHerramientasScreen` según las decisiones 1–7; sin cambios en reglas de negocio ni en Room.
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador (1080×2400) con 2 herramientas: globo de cantidad, cambio de estado ("Extraviado" y de vuelta a "Operativo"), colores verde / amarillo / rojo cálido y Siguiente sin flecha.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

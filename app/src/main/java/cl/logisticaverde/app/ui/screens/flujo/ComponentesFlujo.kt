@@ -1,6 +1,12 @@
 package cl.logisticaverde.app.ui.screens.flujo
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -24,7 +30,13 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,11 +49,12 @@ import cl.logisticaverde.app.ui.theme.AzulPetroleo
 import cl.logisticaverde.app.ui.theme.AzulPetroleoClaro
 import cl.logisticaverde.app.ui.theme.Blanco
 import cl.logisticaverde.app.ui.theme.BordeSuave
+import cl.logisticaverde.app.ui.theme.CieloClaro
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
 
 /*
- * Piezas comunes del rediseño de las pantallas del flujo (P2 ISSUE-44, P3 ISSUE-46),
+ * Piezas comunes del rediseño de las pantallas del flujo (P2 ISSUE-44, P3 ISSUE-46, P4 ISSUE-48),
  * para que todas compartan tarjetas, subtítulos, botones de selección y el botón Siguiente.
  */
 
@@ -156,7 +169,13 @@ fun coloresCampoFlujo(): TextFieldColors = OutlinedTextFieldDefaults.colors(
     focusedTextColor = AzulMarino,
     unfocusedTextColor = AzulMarino,
     focusedPlaceholderColor = AzulMarinoSuave,
-    unfocusedPlaceholderColor = AzulMarinoSuave
+    unfocusedPlaceholderColor = AzulMarinoSuave,
+    // Deshabilitado (p. ej. desplegable de la P4 sin opciones): blanco con texto atenuado
+    disabledContainerColor = Blanco,
+    disabledBorderColor = BordeSuave,
+    disabledTextColor = AzulMarinoSuave,
+    disabledPlaceholderColor = AzulMarinoSuave.copy(alpha = 0.6f),
+    disabledTrailingIconColor = AzulMarinoSuave.copy(alpha = 0.6f)
 )
 
 @Composable
@@ -172,3 +191,60 @@ fun coloresCheckboxFlujo() = CheckboxDefaults.colors(
  */
 fun nombreSectorVisible(nombre: String): String =
     nombre.replace(Regex("""\s*\([^()]*m(²|2)\s*\)\s*$""", RegexOption.IGNORE_CASE), "").trim()
+
+/**
+ * Fondo celeste para un área vacía del flujo (P3 "Sin fotografía", P4 "Sin herramientas"):
+ * ícono + texto centrados y, debajo, [contenido] opcional.
+ */
+@Composable
+fun FondoVacioFlujo(
+    icono: ImageVector,
+    texto: String,
+    contenido: @Composable () -> Unit = {}
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(CieloClaro)
+            .border(1.dp, BordeSuave, RoundedCornerShape(16.dp))
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icono,
+                contentDescription = null,
+                tint = AzulMarinoSuave,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                text = texto,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = AzulMarinoSuave
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        contenido()
+    }
+}
+
+/** Dibuja cuatro esquinas en "L" sobre el contenido, como el visor de una cámara (P3 y P4). */
+fun Modifier.esquinasVisor(color: Color): Modifier = drawWithContent {
+    drawContent()
+    val margen = 12.dp.toPx()
+    val largo = 28.dp.toPx()
+    val grosor = 4.dp.toPx()
+    val izq = margen
+    val der = size.width - margen
+    val arr = margen
+    val aba = size.height - margen
+    fun linea(desde: Offset, hasta: Offset) =
+        drawLine(color, desde, hasta, strokeWidth = grosor, cap = StrokeCap.Round)
+    linea(Offset(izq, arr), Offset(izq + largo, arr)); linea(Offset(izq, arr), Offset(izq, arr + largo))
+    linea(Offset(der, arr), Offset(der - largo, arr)); linea(Offset(der, arr), Offset(der, arr + largo))
+    linea(Offset(izq, aba), Offset(izq + largo, aba)); linea(Offset(izq, aba), Offset(izq, aba - largo))
+    linea(Offset(der, aba), Offset(der - largo, aba)); linea(Offset(der, aba), Offset(der, aba - largo))
+}

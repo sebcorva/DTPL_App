@@ -277,6 +277,7 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.agregarHerramientaPorQr("INV-02-PINZA-01")
         assertTrue(viewModel.herramientasJornada.value.isEmpty())
         assertTrue(viewModel.uiState.value.qrFeedbackMessage.orEmpty().contains("Extraviada"))
+        assertTrue(viewModel.uiState.value.qrFeedbackEsError) // ISSUE-48: mensaje en rojo
 
         // 3. Escanear o elegir del desplegable la herramienta Dañada sí se permite y conserva su estado 'Dañado'
         viewModel.agregarHerramientaPorQr("INV-02-PINZA-02")
@@ -284,6 +285,7 @@ class JornadaFlujoBusinessRulesTest {
         val agregada = viewModel.herramientasJornada.value.first()
         assertEquals(HerramientaCatalogoEntity.ESTADO_DANADO, agregada.estadoFinal)
         assertTrue(viewModel.uiState.value.qrFeedbackMessage.orEmpty().contains("Dañado"))
+        assertFalse(viewModel.uiState.value.qrFeedbackEsError) // ISSUE-48: agregada → verde
 
         // 4. Intentar agregar la misma herramienta por segunda vez debe bloquear duplicado
         viewModel.agregarHerramientaPorQr("INV-02-PINZA-02")
@@ -661,9 +663,11 @@ class JornadaFlujoBusinessRulesTest {
         iniciarJornadaHastaPantalla3()
         viewModel.agregarHerramientaPorQr("INV-99-DESCONOCIDA")
         assertFalse(viewModel.uiState.value.qrFeedbackMessage.orEmpty().contains("INV-"))
+        assertTrue(viewModel.uiState.value.qrFeedbackEsError)
 
         viewModel.agregarHerramientaPorQr("INV-02-PINZA-03")
         assertEquals("Agregada: Pinza 3", viewModel.uiState.value.qrFeedbackMessage)
+        assertFalse(viewModel.uiState.value.qrFeedbackEsError)
         // La pesa ya no es parte del inventario
         assertNull(fakeCatalogoDao.getHerramientaByQr("INV-01-PESA-01"))
     }

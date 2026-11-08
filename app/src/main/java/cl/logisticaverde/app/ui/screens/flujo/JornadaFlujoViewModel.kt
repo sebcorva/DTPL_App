@@ -65,6 +65,10 @@ data class EquipoSeleccionUiState(
     val motivoOmisionSacos: String = "",
     val isSavingPhoto: Boolean = false,
     val qrFeedbackMessage: String? = null,
+    // true si el último mensaje del escaneo es un error (rojo); false si se agregó (verde) — ISSUE-48
+    val qrFeedbackEsError: Boolean = false,
+    // Sube con cada mensaje nuevo: la P4 reinicia con él los 2 s del aviso "Agregada", aunque el texto se repita
+    val qrFeedbackSeq: Int = 0,
     // Pantalla 4: la brigada no lleva herramientas (se salta P7)
     val sinHerramientas: Boolean = false,
     val isLimpiezaIniciada: Boolean = false,
@@ -673,7 +677,7 @@ class JornadaFlujoViewModel(
             val catalogoItem = catalogoDao.getHerramientaByQr(codigoLimpio)
             if (catalogoItem == null) {
                 _uiState.update {
-                    it.copy(qrFeedbackMessage = "Este código QR no corresponde a ninguna herramienta del inventario.")
+                    it.copy(qrFeedbackMessage = "Este código QR no corresponde a ninguna herramienta del inventario.", qrFeedbackEsError = true, qrFeedbackSeq = it.qrFeedbackSeq + 1)
                 }
                 return@launch
             }
@@ -681,7 +685,7 @@ class JornadaFlujoViewModel(
             // Regla 1: Bloquear herramientas extraviadas; permitir 'Operativo' y 'Dañado' mostrando su estado
             if (catalogoItem.estado.equals(HerramientaCatalogoEntity.ESTADO_EXTRAVIADO, ignoreCase = true)) {
                 _uiState.update {
-                    it.copy(qrFeedbackMessage = "La herramienta '${catalogoItem.nombreHerramienta}' figura como Extraviada y no puede utilizarse.")
+                    it.copy(qrFeedbackMessage = "La herramienta '${catalogoItem.nombreHerramienta}' figura como Extraviada y no puede utilizarse.", qrFeedbackEsError = true, qrFeedbackSeq = it.qrFeedbackSeq + 1)
                 }
                 return@launch
             }
@@ -696,7 +700,7 @@ class JornadaFlujoViewModel(
             )
             if (insertedRowId == -1L) {
                 _uiState.update {
-                    it.copy(qrFeedbackMessage = "La herramienta '${catalogoItem.nombreHerramienta}' ya fue agregada.")
+                    it.copy(qrFeedbackMessage = "La herramienta '${catalogoItem.nombreHerramienta}' ya fue agregada.", qrFeedbackEsError = true, qrFeedbackSeq = it.qrFeedbackSeq + 1)
                 }
             } else {
                 val avisoEstado = if (catalogoItem.estado.equals(HerramientaCatalogoEntity.ESTADO_DANADO, ignoreCase = true)) {
@@ -705,7 +709,7 @@ class JornadaFlujoViewModel(
                     ""
                 }
                 _uiState.update {
-                    it.copy(qrFeedbackMessage = "Agregada: ${catalogoItem.nombreHerramienta}$avisoEstado")
+                    it.copy(qrFeedbackMessage = "Agregada: ${catalogoItem.nombreHerramienta}$avisoEstado", qrFeedbackEsError = false, qrFeedbackSeq = it.qrFeedbackSeq + 1)
                 }
             }
         }

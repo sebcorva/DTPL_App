@@ -318,6 +318,25 @@
 * **Propuesta:** dejar el nombre limpio en Supabase, `CatalogoSeedData` y `supabase_schema.sql`, y usar siempre `area_m2` como dato. Sirve para calcular datos (m² limpiados, densidad, KPIs de ISSUE-30) y para reportes sin texto duplicado ni inconsistente si cambia la superficie.
 * Coordinar con el administrador; las jornadas ya hechas guardan el id del sector, así que no se ven afectadas.
 
+### `[ISSUE-48]` ✅ Rediseño UI: Pantalla 4 "Herramientas de la brigada" · 0,5 d
+> **Decisiones del 07-11-2026** (sin imagen de diseño: mismo formato de la P2 y la P3, con la paleta y Nunito actuales; solo visual):
+> 1. Sin imagen de referencia: se siguen las piezas de `ComponentesFlujo.kt`.
+> 2. Título `TituloPantallaFlujo("Herramientas de la brigada")`.
+> 3. Dos tarjetas: (1) "Escanear herramienta" con el visor de cámara y esquinas blancas tipo visor, y debajo el desplegable "Elige una herramienta" + botón redondo verde "+" (gris si no hay nada elegido, como en la P2), reemplazando el botón "Agregar"; (2) "Herramientas agregadas" con ícono de herramienta y globo de cantidad (como los voluntarios de la P2) y la lista.
+> 4. "Esta brigada no lleva herramientas" bajo la tarjeta 1 (como "Continuar sin fotografía" en la P3); al marcarla, el visor cambia a un fondo "Sin herramientas" con ícono (como el fondo "Sin fotografía") y el desplegable queda deshabilitado.
+> 5. Desplegable sin preselección (placeholder "Elige una herramienta"); tras agregar vuelve al placeholder. Las dañadas siguen como "Pinza 2 (Dañado)"; las extraviadas siguen ocultas.
+> 6. Mensajes del escaneo en una línea con ícono y color: verde con ✓ al agregar, rojo con ⚠ en error.
+> 7. Filas: solo el nombre y basurero delineado; etiqueta roja "Dañado" solo si corresponde (antes "Estado: Operativo" en todas). Lista vacía: "Aún no hay herramientas".
+> 8. Sin permiso de cámara: fondo celeste con ícono de cámara y botón "Permitir cámara" con el estilo nuevo.
+> 9. Botón Siguiente en píldora verde (`BotonSiguienteFlujo`).
+* **Criterios de aceptación:**
+  - [x] `HerramientasQrScreen` según las decisiones 1–9; sin cambios en reglas de negocio ni en Room. Única adición al estado: `qrFeedbackEsError` (color del mensaje).
+  - [x] Tests en verde (61), con aserciones de `qrFeedbackEsError` en los tests de P4.
+  - [x] Verificado en emulador (1080×2400): visor con esquinas, agregar desde el desplegable (vuelve al placeholder), mensaje verde, etiqueta "Dañado", globo de cantidad, basurero, "no lleva herramientas" y sin permiso de cámara.
+* **Ajustes del 07-11-2026:** el aviso verde "Agregada: …" aparece con un fundido corto y a los 2 s se desvanece (0,6 s) antes de cerrar su espacio (los errores en rojo quedan hasta el siguiente intento); el basurero de cada fila queda pegado a la derecha (antes quedaba al centro del espacio libre).
+* `FondoVacioFlujo` y `Modifier.esquinasVisor` pasan a `ComponentesFlujo.kt` (compartidos con la P3).
+* 📝 **Pendiente menor:** si el líder elige "No permitir" de forma definitiva, Android ya no muestra el diálogo y "Permitir cámara" no hace nada (igual que antes del rediseño). Mejora posible: en ese caso abrir los ajustes de la app.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

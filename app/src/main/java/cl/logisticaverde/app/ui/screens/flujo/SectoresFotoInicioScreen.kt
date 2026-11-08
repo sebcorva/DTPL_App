@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
@@ -43,10 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -61,7 +56,6 @@ import cl.logisticaverde.app.domain.util.ImageCompressor
 import cl.logisticaverde.app.ui.theme.AzulMarino
 import cl.logisticaverde.app.ui.theme.AzulMarinoSuave
 import cl.logisticaverde.app.ui.theme.Blanco
-import cl.logisticaverde.app.ui.theme.BordeSuave
 import cl.logisticaverde.app.ui.theme.CieloClaro
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import java.io.File
@@ -188,7 +182,7 @@ fun SectoresFotoInicioScreen(
                 when {
                     uiState.isSavingPhoto -> CircularProgressIndicator(color = VerdeAccion)
                     // Sin foto: fondo propio "Sin fotografía" y el motivo encima
-                    uiState.omitirFotoInicio -> FondoSinFoto {
+                    uiState.omitirFotoInicio -> FondoVacioFlujo(Icons.Outlined.NoPhotography, "Sin fotografía") {
                         Surface(
                             shape = RoundedCornerShape(16.dp),
                             color = Blanco,
@@ -276,38 +270,6 @@ private fun VisorFoto(
     }
 }
 
-/** Fondo del área de la foto cuando se continúa sin fotografía: celeste con cámara tachada. */
-@Composable
-private fun FondoSinFoto(contenido: @Composable () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CieloClaro)
-            .border(1.dp, BordeSuave, RoundedCornerShape(16.dp))
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.NoPhotography,
-                contentDescription = null,
-                tint = AzulMarinoSuave,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(Modifier.size(8.dp))
-            Text(
-                text = "Sin fotografía",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = AzulMarinoSuave
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        contenido()
-    }
-}
-
 @Composable
 private fun BotonCamara(texto: String, onClick: () -> Unit) {
     Surface(
@@ -332,22 +294,4 @@ private fun BotonCamara(texto: String, onClick: () -> Unit) {
             )
         }
     }
-}
-
-/** Dibuja cuatro esquinas en "L" sobre el contenido, como el visor de una cámara. */
-private fun Modifier.esquinasVisor(color: Color): Modifier = drawWithContent {
-    drawContent()
-    val margen = 12.dp.toPx()
-    val largo = 28.dp.toPx()
-    val grosor = 4.dp.toPx()
-    val izq = margen
-    val der = size.width - margen
-    val arr = margen
-    val aba = size.height - margen
-    fun linea(desde: Offset, hasta: Offset) =
-        drawLine(color, desde, hasta, strokeWidth = grosor, cap = StrokeCap.Round)
-    linea(Offset(izq, arr), Offset(izq + largo, arr)); linea(Offset(izq, arr), Offset(izq, arr + largo))
-    linea(Offset(der, arr), Offset(der - largo, arr)); linea(Offset(der, arr), Offset(der, arr + largo))
-    linea(Offset(izq, aba), Offset(izq + largo, aba)); linea(Offset(izq, aba), Offset(izq, aba - largo))
-    linea(Offset(der, aba), Offset(der - largo, aba)); linea(Offset(der, aba), Offset(der, aba - largo))
 }

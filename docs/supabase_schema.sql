@@ -52,6 +52,16 @@ CREATE TABLE IF NOT EXISTS public.tipo_basura_catalogo (
     categoria_origen TEXT NOT NULL CHECK (categoria_origen IN ('Recreativa', 'Marítima', 'Higiene'))
 );
 
+-- ISSUE-43 (08-11-2026): los catálogos no se borran; se desactivan con is_activo = false.
+-- La app oculta los inactivos al ingresar datos de jornadas nuevas; la RPC sigue aceptando
+-- jornadas que los usen (solo exige que existan), así las pendientes de antes no se rechazan.
+-- Ejemplo (SQL Editor, como admin):
+--   UPDATE public.sector_catalogo SET is_activo = false WHERE id_sector = 'SECTOR-04';
+ALTER TABLE public.playa_catalogo       ADD COLUMN IF NOT EXISTS is_activo BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.sector_catalogo      ADD COLUMN IF NOT EXISTS is_activo BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.herramienta_catalogo ADD COLUMN IF NOT EXISTS is_activo BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.tipo_basura_catalogo ADD COLUMN IF NOT EXISTS is_activo BOOLEAN NOT NULL DEFAULT true;
+
 
 -- ============================================================================
 -- 2. TABLAS OPERATIVAS (solo se escriben mediante sincronizar_jornada)

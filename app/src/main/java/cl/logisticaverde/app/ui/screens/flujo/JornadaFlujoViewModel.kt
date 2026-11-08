@@ -229,26 +229,37 @@ class JornadaFlujoViewModel(
         _avisos.tryEmit(AVISO_ERROR_GUARDADO)
     }
 
-    val playasCatalogo: StateFlow<List<PlayaCatalogoEntity>> = catalogoDao.observePlayas()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** P2: playas activas (ISSUE-43); una ya elegida en la jornada en curso se mantiene aunque se desactive. */
+    val playasCatalogo: StateFlow<List<PlayaCatalogoEntity>> = combine(
+        catalogoDao.observePlayas(),
+        _uiState.map { it.selectedPlayaId }.distinctUntilChanged()
+    ) { playas, idElegida ->
+        playas.filter { it.estaActivo || it.idPlaya == idElegida }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** P3: solo los sectores de la playa elegida en P2. */
+    /**
+     * P3: solo los sectores activos de la playa elegida en P2 (ISSUE-43); los ya elegidos en la
+     * jornada en curso se mantienen aunque se desactiven.
+     */
     val sectoresCatalogo: StateFlow<List<SectorCatalogoEntity>> = combine(
         catalogoDao.observeSectores(),
-        _uiState.map { it.selectedPlayaId }.distinctUntilChanged()
-    ) { sectores, idPlaya ->
-        sectores.filter { it.idPlaya == idPlaya }
+        _uiState.map { it.selectedPlayaId to it.selectedSectoresIds }.distinctUntilChanged()
+    ) { sectores, (idPlaya, elegidos) ->
+        sectores.filter { it.idPlaya == idPlaya && (it.estaActivo || it.idSector in elegidos) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
      * Regla de Inventario (Pantalla 4):
      * Las herramientas con estado 'Extraviado' se ocultan del selector disponible;
      * se muestran las 'Operativo' y 'Dañado' (visualizando su estado).
+     * ISSUE-43: tampoco se ofrecen las dadas de baja (`is_activo = false`).
      */
     val herramientasCatalogo: StateFlow<List<HerramientaCatalogoEntity>> =
         catalogoDao.observeHerramientasCatalogo()
             .map { lista ->
-                lista.filter { !it.estado.equals(HerramientaCatalogoEntity.ESTADO_EXTRAVIADO, ignoreCase = true) }
+                lista.filter {
+                    it.estaActivo && !it.estado.equals(HerramientaCatalogoEntity.ESTADO_EXTRAVIADO, ignoreCase = true)
+                }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -540,7 +551,8 @@ class JornadaFlujoViewModel(
             )
         )
 
-        val tiposBasura = catalogoDao.getTiposBasuraList()
+        // ISSUE-43: la grilla de una jornada nueva solo trae los tipos activos
+        val tiposBasura = catalogoDao.getTiposBasuraList().filter { it.estaActivo }
         val filasIniciales = tiposBasura.map { tipo ->
             BasuraRecolectadaEntity(
                 idRegistro = nuevoIdRegistro,
@@ -677,6 +689,14 @@ class JornadaFlujoViewModel(
             if (catalogoItem == null) {
                 _uiState.update {
                     it.copy(qrFeedbackMessage = "Este código QR no corresponde a ninguna herramienta del inventario.", qrFeedbackEsError = true, qrFeedbackSeq = it.qrFeedbackSeq + 1)
+                }
+                return@launch
+            }
+
+            // ISSUE-43: herramienta dada de baja por el administrador
+            if (!catalogoItem.estaActivo) {
+                _uiState.update {
+                    it.copy(qrFeedbackMessage = "La herramienta '${catalogoItem.nombreHerramienta}' está dada de baja y no puede utilizarse.", qrFeedbackEsError = true, qrFeedbackSeq = it.qrFeedbackSeq + 1)
                 }
                 return@launch
             }

@@ -25,8 +25,10 @@ import kotlinx.coroutines.launch
  * - v3 → v4 también es destructiva, por decisión del 31-10-2026 (playas, brigada, fecha de jornada;
  *   los datos locales eran de prueba).
  * - v4 → v5 también es destructiva, por decisión del 31-10-2026 (ISSUE-42: `motivo_error_sync`;
- *   aún no hay datos reales). Es la ÚLTIMA vez: el piloto parte con la v5.
- * - Desde la v5, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
+ *   aún no hay datos reales).
+ * - v5 → v6 también es destructiva, por decisión del 08-11-2026 (ISSUE-43: columna `is_activo` en los
+ *   4 catálogos; solo había datos de prueba, sin datos sensibles). Es la ÚLTIMA vez: el piloto parte con la v6.
+ * - Desde la v6, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
  *   explícita en [MIGRACIONES] y un test con `MigrationTestHelper` contra `app/schemas/`.
  *   Nunca volver a usar `fallbackToDestructiveMigration()`: borraría jornadas sin sincronizar.
  */
@@ -41,7 +43,7 @@ import kotlinx.coroutines.launch
         HerramientaJornadaEntity::class,
         BasuraRecolectadaEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 abstract class LogisticaVerdeDatabase : RoomDatabase() {
@@ -53,7 +55,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: LogisticaVerdeDatabase? = null
 
-        // Migraciones explícitas a partir de la v4 (ej. MIGRATION_4_5)
+        // Migraciones explícitas a partir de la v6 (ej. MIGRATION_6_7)
         private val MIGRACIONES = emptyArray<Migration>()
 
         private val dbScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -77,7 +79,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
                         }
                     })
                     .addMigrations(*MIGRACIONES)
-                    .fallbackToDestructiveMigrationFrom(1, 2, 3, 4)
+                    .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5)
                     .build()
 
                 INSTANCE = instance

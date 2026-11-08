@@ -269,9 +269,22 @@
 * ✅ `allowBackup="false"` + `dataExtractionRules` (31-10-2026): nada se respalda en la nube de Google ni se copia a un teléfono nuevo.
 * Pendientes: bucket público (fotos visibles con la URL, Ley 21.719); límite del bucket de 5 MB (la app sube ~180 KB); respaldo de la keystore de firma.
 
-### `[ISSUE-43]` 🟡 Catálogos locales que no se actualizan al borrar en el servidor — playas y sectores resueltos
+### `[ISSUE-43]` ✅ Catálogos locales que no se actualizan al borrar en el servidor — resuelto con `is_activo`
+> **Decisiones del 08-11-2026** (se elige la opción 2, desactivar en vez de borrar):
+> 1. Columna **`is_activo`** (literal, en las 4 tablas: playas, sectores, herramientas y tipos de residuo), `BOOLEAN NOT NULL DEFAULT true` en Supabase. Lo guardado no se pierde al borrar (cada jornada copia los nombres); el problema eran las llaves foráneas en Supabase y en el teléfono, y las jornadas pendientes que el servidor rechazaba.
+> 2. La app **oculta los inactivos al ingresar datos de jornadas nuevas**: playa en P2, sectores en P3, herramientas en P4 (desplegable y QR: "está dada de baja") y tipos de residuo al crear la grilla de P5. Lo ya elegido o contado en la jornada en curso se mantiene. En herramientas, `is_activo = false` (dada de baja) es distinto de "Extraviado" (perdida); ambas se ocultan en P4 hasta que el administrador cambie el dato en Supabase.
+> 3. La RPC no cambia: sigue aceptando jornadas con elementos inactivos (solo exige que existan).
+> 4. No se agrega borrado para herramientas ni tipos; playas y sectores mantienen el reemplazo del 07-11-2026.
+> 5. Room v5 → v6 **destructiva** (solo datos de prueba, sin datos sensibles). Desde la v6, migraciones explícitas.
+> 6. `docs/supabase_schema.sql` agrega las 4 columnas (`ADD COLUMN IF NOT EXISTS`). La app tolera que aún no existan: Gson deja `null` y se trata como activo.
+> 7. Tests: `CatalogosInactivosTest` (7).
+* **Criterios de aceptación:**
+  - [x] Entidades con `activo: Boolean?` (`is_activo`), `estaActivo` = no es `false`; filtros en `JornadaFlujoViewModel`.
+  - [x] Tests en verde (73).
+  - [x] Verificado en emulador contra Supabase **sin** la columna: base v6, 4 catálogos descargados, todo activo.
+  - [x] Ejecutados en Supabase los `ALTER TABLE` (08-11-2026); el teléfono descarga `is_activo` (todo activo) y Pinza 1 volvió a "Operativo". Verificado por el usuario: con `SECTOR-04` en `is_activo = false`, la P3 ya no lo muestra.
 * ✅ **Resuelto para playas y sectores (07-11-2026):** al descargar, `reemplazarPlayas` / `reemplazarSectores` (transacción en `CatalogoDao`) borran lo que ya no viene del servidor y actualizan el resto; una lista vacía no borra nada. Detectado porque "Sector PRUEBA" (`SECTOR-TEST`, borrado en Supabase) seguía en la P3. Verificado contra Supabase en el emulador; 2 tests nuevos. El fake de `CatalogoDao` ahora se comporta como `@Upsert` (antes reemplazaba la lista y ocultaba el problema).
-* Pendiente: herramientas y tipos de basura (tienen llaves foráneas `RESTRICT` desde las tablas de la jornada; requieren la opción 1 con cuidado o la opción 2).
+* ~~Pendiente: herramientas y tipos de basura~~ → resuelto con `is_activo` (08-11-2026).
 * **Hallazgo (07-11-2026, prueba de rechazo de ISSUE-42):** `sincronizarCatalogosMaestros()` solo hace *upsert*: si el administrador borra (o cambia de playa) un sector, una herramienta o una playa en Supabase, la app conserva su copia local. El dato borrado sigue apareciendo en P2–P4, la validación de la P9 lo acepta y la jornada termina **rechazada** por la RPC al sincronizar ("Sector desconocido o de otra playa", "Herramienta desconocida", "Playa desconocida").
 * **Riesgo en el piloto:** cualquier ajuste de catálogo hecho por el administrador provoca rechazos en los teléfonos que no se actualicen; hoy la única salida es restaurar el dato en el servidor y usar "Reintentar".
 * **Opciones:**

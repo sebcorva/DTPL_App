@@ -2,18 +2,14 @@ package cl.logisticaverde.app.ui.screens.flujo
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.BitmapFactory
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,10 +18,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.outlined.NoPhotography
 import androidx.compose.material3.Checkbox
@@ -42,12 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import cl.logisticaverde.app.R
@@ -56,7 +45,6 @@ import cl.logisticaverde.app.domain.util.ImageCompressor
 import cl.logisticaverde.app.ui.theme.AzulMarino
 import cl.logisticaverde.app.ui.theme.AzulMarinoSuave
 import cl.logisticaverde.app.ui.theme.Blanco
-import cl.logisticaverde.app.ui.theme.CieloClaro
 import cl.logisticaverde.app.ui.theme.VerdeAccion
 import java.io.File
 
@@ -198,8 +186,13 @@ fun SectoresFotoInicioScreen(
                             )
                         }
                     }
-                    else -> VisorFoto(pathFoto = if (hasPhoto) uiState.pathFotoInicio else null) {
-                        BotonCamara(
+                    // Ilustración: res/drawable-nodpi/playa_sucia_p3.webp (original en Mockup/assets/background_playa_sucia.jpg)
+                    else -> VisorFotoFlujo(
+                        pathFoto = if (hasPhoto) uiState.pathFotoInicio else null,
+                        ilustracion = R.drawable.playa_sucia_p3,
+                        descripcionFoto = "Vista previa sector inicio"
+                    ) {
+                        BotonCamaraFlujo(
                             texto = if (hasPhoto) "Repetir foto de inicio" else "Tomar foto de inicio",
                             onClick = tomarFoto
                         )
@@ -229,69 +222,5 @@ fun SectoresFotoInicioScreen(
 
         Spacer(Modifier.height(16.dp))
         BotonSiguienteFlujo(enabled = canProceed, onClick = onSiguienteClick)
-    }
-}
-
-/**
- * Visor de la foto: sin foto, la ilustración de playa sucia; con foto, la vista previa.
- * Encima van las esquinas tipo visor y [contenido] (botón de cámara).
- */
-@Composable
-private fun VisorFoto(
-    pathFoto: String?,
-    contenido: @Composable BoxScope.() -> Unit
-) {
-    val bitmap = remember(pathFoto) { pathFoto?.let { BitmapFactory.decodeFile(it) } }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .clip(RoundedCornerShape(16.dp))
-            .background(CieloClaro)
-            .esquinasVisor(if (bitmap != null) Blanco else AzulMarino),
-        contentAlignment = Alignment.Center
-    ) {
-        if (bitmap == null) {
-            // Ilustración (res/drawable-nodpi/playa_sucia_p3.webp; original en Mockup/assets/background_playa_sucia.jpg)
-            Image(
-                painter = painterResource(R.drawable.playa_sucia_p3),
-                contentDescription = null, // decorativa
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Image(
-                bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Vista previa sector inicio",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-        contenido()
-    }
-}
-
-@Composable
-private fun BotonCamara(texto: String, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = VerdeAccion,
-        contentColor = Blanco,
-        shadowElevation = 6.dp,
-        modifier = Modifier.padding(16.dp)
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-        ) {
-            Icon(Icons.Filled.CameraAlt, contentDescription = null, modifier = Modifier.size(24.dp))
-            Spacer(Modifier.size(10.dp))
-            Text(
-                text = texto,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-        }
     }
 }

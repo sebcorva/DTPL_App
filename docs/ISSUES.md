@@ -358,6 +358,21 @@
 * **Hallazgo (07-11-2026, ISSUE-49):** los nombres del catálogo (`tipo_basura_catalogo.nombre_visible`) son largos ("Envoltorios / bolsas plásticas") y en la grilla de 3 columnas de la P5 ocupan 2 líneas con letra pequeña.
 * **Propuesta:** columna `nombre_corto` en Supabase, `CatalogoSeedData` y `supabase_schema.sql` ("Colillas", "PET", "Latas"…), usada solo en la grilla; los reportes siguen con el nombre completo. Coordinar con el administrador.
 
+### `[ISSUE-51]` ✅ Rediseño UI: Pantalla 6 "Fotografías de evidencia" · 0,5 d
+> **Decisiones del 08-11-2026** (mismo formato de la P3, con la paleta y Nunito actuales; solo visual):
+> 1. Título "Fotografías de evidencia" (antes "Fotografías de Evidencia Final").
+> 2. Dos tarjetas iguales (50/50) y botón Siguiente en píldora verde (`BotonSiguienteFlujo`). Cada tarjeta: subtítulo verde con ✓ al quedar resuelta, visor con esquinas tipo cámara y botón verde de cámara encima, y "Continuar sin fotografía" abajo.
+> 3. Subtítulos sin numeración: "Foto de sector limpio" y "Foto de sacos llenos".
+> 4. Ilustraciones del visor sin foto: sector limpio usa `playa_limpia_p6.webp` (original `Mockup/assets/background_playa_limpia.jpg`; ~~reutilizar `portada_p1`~~, cambiado el 08-11-2026 a la ilustración nueva); sacos usa `sacos_p6.webp` (original `Mockup/assets/background_sacos.jpg`).
+> 5. Botones: "Tomar foto de sector limpio" / "Repetir foto de sector limpio" y "Tomar foto de sacos" / "Repetir foto de sacos".
+> 6. "Continuar sin fotografía" como en la P3: fondo "Sin fotografía" con el motivo encima en una tarjeta blanca; el campo usa 1–2 líneas (en la P3, 2–3) para caber en el visor más bajo.
+> 7. `VisorFotoFlujo` y `BotonCamaraFlujo` pasan a `ComponentesFlujo.kt` (compartidos con la P3, sin cambio visual en ella).
+> 8. Sin cambios de lógica: permisos, compresión 720p, motivo obligatorio y habilitación de Siguiente.
+* **Criterios de aceptación:**
+  - [x] `EvidenciasFinalesScreen` según las decisiones 1–8; sin cambios en reglas de negocio ni en Room.
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador (1080×2400): ambos visores con su ilustración y botón de cámara, y "Continuar sin fotografía" con el fondo "Sin fotografía" y el motivo cabiendo en el visor. *Sin probar en emulador: la toma de foto real.*
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

@@ -20,7 +20,10 @@ import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
 fun MotivoOmisionField(
     motivo: String,
     onMotivoChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // P6 (ISSUE-51): 1–2 líneas para caber en el visor más bajo
+    minLines: Int = 2,
+    maxLines: Int = 3
 ) {
     val vacio = motivo.isBlank()
     OutlinedTextField(
@@ -42,8 +45,8 @@ fun MotivoOmisionField(
                 )
             }
         },
-        minLines = 2,
-        maxLines = 3,
+        minLines = minLines,
+        maxLines = maxLines,
         shape = FormaCampoFlujo,
         colors = coloresCampoFlujo(),
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),

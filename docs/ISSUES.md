@@ -434,6 +434,22 @@
   - [x] Tests en verde (66).
   - [x] Verificado en emulador (1080×2400) con 2 herramientas: globo de cantidad, cambio de estado ("Extraviado" y de vuelta a "Operativo"), colores verde / amarillo / rojo cálido y Siguiente sin flecha.
 
+### `[ISSUE-56]` ✅ Rediseño UI: Pantalla 10 "Resumen de impacto" e imagen para Instagram · 0,5 d
+> **Decisiones del 08-11-2026** (paleta y Nunito actuales):
+> 1. Se rediseñan la pantalla y la imagen 1080×1920 que se comparte.
+>    - **Imagen:** fondo con la playa limpia (`playa_limpia_p6`) al ~25 % sobre el degradado verde → azul petróleo (se mantiene, para que las cifras blancas se lean); logo con anillo blanco arriba al centro (~200 px) sobre el título; el resto igual (playa, fecha · brigada, kg, % reciclable, 4 cifras en tarjetas blancas, top 3 de residuos, hashtag y @cuenta), con espacios ajustados para que quepa.
+> 2. Título "Resumen de impacto" (sin aviso de "Jornada guardada": también se llega desde el inicio y desde Reportes).
+> 3. Vista previa dentro de una tarjeta blanca con sombra y esquinas redondeadas. **Sin ruedita de carga:** mientras se genera, la tarjeta queda vacía y la imagen aparece con un fundido; los botones quedan grises hasta entonces.
+> 4. Botones: "Compartir en Instagram" en píldora verde con ícono de compartir; "Guardar en galería" en píldora blanca con borde, texto azul marino e ícono de descarga; "Volver al inicio" como enlace azul petróleo.
+> 5. Mensajes con `MensajeFlujo` (verde con ✓ / rojo con ⚠); el verde se desvanece solo a los pocos segundos.
+> 6. "No se encontró la jornada" sobre el fondo celeste con ícono (`FondoVacioFlujo`).
+> 7. Sin cambios de lógica (generar, compartir, guardar, permisos).
+* **Criterios de aceptación:**
+  - [x] Pantalla e imagen según las decisiones 1–7 (`ResumenImpactoScreen`, `ResumenImpactoGenerator`).
+  - [x] Tests en verde (66).
+  - [x] Verificado en emulador (1080×2400) desde "Última jornada": imagen con logo y playa de fondo, tarjeta blanca, botones nuevos; "Guardar en galería" muestra el aviso verde y se desvanece a los ~3 s. *Sin probar: compartir en Instagram (no está instalado en el emulador) y "No se encontró la jornada".*
+* En la vista previa la imagen se recorta (`Crop`) en vez de ajustarse, para no dejar franjas por el margen de la tarjeta.
+
 ### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
 * Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
 

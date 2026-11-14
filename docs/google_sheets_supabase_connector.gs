@@ -48,8 +48,27 @@ const CFG = {
   PAGINA: 1000,
   // Filas de la tabla "Comparación por brigada" del KPI.
   MAX_BRIGADAS_KPI: 8,
-  COLOR_ENCABEZADO: "#1B5E20",
-  COLOR_TITULO: "#1B5E20",
+};
+
+/** Paleta y tipografía de la app «Deja tu Playa Limpia» (app/…/ui/theme/Color.kt y Type.kt). */
+const UI = {
+  FUENTE: "Nunito",
+  PETROLEO: "#0E7C86",        // AzulPetroleo: títulos y encabezados
+  PETROLEO_CLARO: "#CDEDEF",  // AzulPetroleoClaro
+  MARINO: "#0F3D5E",          // AzulMarino: texto principal
+  MARINO_SUAVE: "#51708A",    // AzulMarinoSuave: texto secundario
+  VERDE: "#2EAE7A",           // VerdeAccion
+  VERDE_OSCURO: "#1F8A5F",    // VerdeAccionOscuro
+  MENTA: "#DDF5EA",           // VerdeMenta: fondos suaves (filtros)
+  VERDE_DEGRADADO: "#A7E3C8", // máximo de los degradados de cantidades
+  CIELO_CLARO: "#D6F0FA",     // CieloClaro
+  CIELO: "#F3FAFD",           // CieloBlanco: filas alternas
+  BLANCO: "#FFFFFF",
+  BORDE: "#D5E7EE",           // BordeSuave
+  AMBAR_FONDO: "#FEF3C7",
+  AMBAR_TEXTO: "#92400E",
+  ROJO_FONDO: "#FDE2DD",
+  ROJO_TEXTO: "#B42318",
 };
 
 const HOJA = {
@@ -167,6 +186,11 @@ const TABLAS = {
       { t: "Foto limpio", enlace: true, v: (r, b) => foto(r.ruta_foto_limpio, r.motivo_omision_limpio, b), w: 150 },
       { t: "Foto sacos", enlace: true, v: (r, b) => foto(r.ruta_foto_sacos, r.motivo_omision_sacos, b), w: 150 },
     ],
+    estilos: col => [
+      degradado(col("Kg totales")),
+      chip(col("Destino basura reciclable"), "Pendiente de entrega", UI.AMBAR_FONDO, UI.AMBAR_TEXTO),
+      omitida(col("Foto inicio")), omitida(col("Foto limpio")), omitida(col("Foto sacos")),
+    ],
   },
   [HOJA.RESIDUOS]: {
     titulo: "DATOS | Residuos (una fila por tipo de residuo y jornada; sin cantidades 0)",
@@ -181,6 +205,12 @@ const TABLAS = {
       { t: "Categoría de origen", v: r => texto(r.categoria_origen), w: 130 },
       { t: "Cantidad", v: r => numero(r.cantidad), f: "#,##0", w: 80 },
     ],
+    estilos: col => [
+      degradado(col("Cantidad")),
+      chip(col("Categoría de origen"), "Recreativa", UI.CIELO_CLARO, UI.PETROLEO),
+      chip(col("Categoría de origen"), "Marítima", UI.PETROLEO_CLARO, UI.MARINO),
+      chip(col("Categoría de origen"), "Higiene", UI.MENTA, UI.VERDE_OSCURO),
+    ],
   },
   [HOJA.HERRAMIENTAS]: {
     titulo: "DATOS | Herramientas (una fila por herramienta que llevó una brigada)",
@@ -194,6 +224,11 @@ const TABLAS = {
       { t: "Herramienta_ID", v: r => texto(r.qr_codigo), w: 170 },
       { t: "Nombre", v: r => texto(r.nombre_herramienta), w: 110 },
       { t: "Estado final", v: r => texto(r.estado_final), w: 100 },
+    ],
+    estilos: col => [
+      chip(col("Estado final"), "Operativo", UI.MENTA, UI.VERDE_OSCURO),
+      chip(col("Estado final"), "Dañado", UI.AMBAR_FONDO, UI.AMBAR_TEXTO),
+      chip(col("Estado final"), "Extraviado", UI.ROJO_FONDO, UI.ROJO_TEXTO),
     ],
   },
 };
@@ -272,7 +307,7 @@ function sincronizar() {
     Object.keys(TABLAS).forEach(h => {
       const def = TABLAS[h];
       const filas = datos[h].map(r => def.columnas.map(c => c.v(r, url)));
-      escribirDatos(ss.getSheetByName(h), filas, def.columnas);
+      escribirDatos(ss.getSheetByName(h), filas, def);
     });
     escribirListas(ss.getSheetByName(HOJA.LISTAS), playas, brigadas, area);
     ss.getSheetByName(HOJA.KPI).getRange("E3").setNumberFormat("dd-mm-yyyy hh:mm").setValue(serialChile(new Date()));
@@ -323,10 +358,12 @@ function unicos(lista) {
  * Reemplaza solo el rango de datos (desde la fila 6); títulos, encabezados y formatos quedan.
  * Las columnas con `enlace` reciben { texto, url } y se escriben como texto enriquecido con vínculo.
  */
-function escribirDatos(sheet, filas, columnas) {
+function escribirDatos(sheet, filas, def) {
+  const columnas = def.columnas;
   const inicio = CFG.FILA_DATOS;
   const nCols = columnas.length;
-  asegurarFilas(sheet, inicio - 1 + Math.max(filas.length, 1));
+  // Si se agregaron filas, las franjas y los colores se extienden a ellas.
+  if (asegurarFilas(sheet, inicio - 1 + Math.max(filas.length, 1))) aplicarEstilosDatos(sheet, def);
   const ocupadas = sheet.getMaxRows() - inicio + 1;
   sheet.getRange(inicio, 1, ocupadas, nCols).clearContent();
   if (filas.length) {
@@ -336,7 +373,10 @@ function escribirDatos(sheet, filas, columnas) {
       if (!c.enlace) return;
       const ricos = filas.map(f => {
         const b = SpreadsheetApp.newRichTextValue().setText(f[i].texto || "");
-        if (f[i].url) b.setLinkUrl(f[i].url);
+        if (f[i].url) {
+          b.setLinkUrl(f[i].url).setTextStyle(SpreadsheetApp.newTextStyle()
+            .setFontFamily(UI.FUENTE).setForegroundColor(UI.PETROLEO).setUnderline(true).build());
+        }
         return [b.build()];
       });
       sheet.getRange(inicio, i + 1, filas.length, 1).setRichTextValues(ricos);
@@ -358,9 +398,11 @@ function escribirListas(sheet, playas, brigadas, area) {
   }
 }
 
+/** Agrega filas al final si faltan; devuelve true si agregó. */
 function asegurarFilas(sheet, ultimaFila) {
   const faltan = ultimaFila - sheet.getMaxRows();
   if (faltan > 0) sheet.insertRowsAfter(sheet.getMaxRows(), faltan);
+  return faltan > 0;
 }
 
 /** Filtro sobre encabezados + datos; se rehace solo si los datos crecieron fuera de su rango. */
@@ -419,35 +461,94 @@ function borrarHojaPorDefecto(ss) {
   });
 }
 
+// ---------- Estilo ----------
+
 function titulo(sheet, celda, txt) {
-  sheet.getRange(celda).setValue(txt).setFontSize(14).setFontWeight("bold").setFontColor(CFG.COLOR_TITULO);
+  sheet.getRange(celda).setValue(txt).setFontFamily(UI.FUENTE).setFontSize(16).setFontWeight("bold")
+    .setFontColor(UI.PETROLEO);
+}
+
+function subtitulo(range, txt) {
+  return range.setValue(txt).setFontFamily(UI.FUENTE).setFontSize(12).setFontWeight("bold")
+    .setFontColor(UI.PETROLEO);
 }
 
 function encabezado(range) {
-  range.setFontWeight("bold").setFontColor("#FFFFFF").setBackground(CFG.COLOR_ENCABEZADO)
-    .setWrap(true).setVerticalAlignment("middle");
+  range.setFontFamily(UI.FUENTE).setFontWeight("bold").setFontColor(UI.BLANCO).setBackground(UI.PETROLEO)
+    .setWrap(true).setVerticalAlignment("middle").setHorizontalAlignment("center");
+}
+
+/** Fuente y color de texto de la app en toda la hoja, sin cuadrícula y con color de pestaña. */
+function baseHoja(sheet, colorPestana) {
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns())
+    .setFontFamily(UI.FUENTE).setFontSize(10).setFontColor(UI.MARINO).setVerticalAlignment("middle");
+  sheet.setHiddenGridlines(true);
+  if (colorPestana) sheet.setTabColor(colorPestana);
+}
+
+/** Línea suave bajo cada fila del rango. */
+function separadores(range) {
+  range.setBorder(null, null, true, null, null, true, UI.BORDE, SpreadsheetApp.BorderStyle.SOLID);
+}
+
+// Reglas de formato condicional (colores por valor, como los chips de la app).
+function chip(rango, valor, fondo, letraColor) {
+  return SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(valor)
+    .setBackground(fondo).setFontColor(letraColor).setBold(true).setRanges([rango]).build();
+}
+
+function degradado(rango) {
+  return SpreadsheetApp.newConditionalFormatRule()
+    .setGradientMinpointWithValue(UI.BLANCO, SpreadsheetApp.InterpolationType.NUMBER, "0")
+    .setGradientMaxpoint(UI.VERDE_DEGRADADO).setRanges([rango]).build();
+}
+
+function omitida(rango) {
+  return SpreadsheetApp.newConditionalFormatRule().whenTextStartsWith("Omitida")
+    .setFontColor(UI.MARINO_SUAVE).setItalic(true).setRanges([rango]).build();
 }
 
 function estructurarTabla(sheet, def) {
   const n = def.columnas.length;
   sheet.getRange(1, 1, 4, Math.max(n, 2)).clearContent();
+  asegurarFilas(sheet, CFG.FILA_DATOS + 1);
+  baseHoja(sheet, UI.PETROLEO_CLARO);
   titulo(sheet, "A1", def.titulo);
   sheet.getRange("A3").setValue("Datos de Supabase: no editar. «Logística Verde → Sincronizar ahora» los reemplaza.")
-    .setFontStyle("italic").setFontColor("#666666");
+    .setFontStyle("italic").setFontColor(UI.MARINO_SUAVE);
 
   encabezado(sheet.getRange(CFG.FILA_ENCABEZADO, 1, 1, n).setValues([def.columnas.map(c => c.t)]));
-  sheet.setRowHeight(CFG.FILA_ENCABEZADO, 36);
-  asegurarFilas(sheet, CFG.FILA_DATOS + 1);
+  sheet.setRowHeight(CFG.FILA_ENCABEZADO, 40);
   const filasDatos = sheet.getMaxRows() - CFG.FILA_DATOS + 1;
+  // Textos largos (sectores, destinos) se cortan en vez de agrandar la fila.
+  sheet.getRange(CFG.FILA_DATOS, 1, filasDatos, n).setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
   def.columnas.forEach((c, i) => {
     if (c.w) sheet.setColumnWidth(i + 1, c.w);
-    // Columnas abiertas (A6:A) para que el formato alcance a filas nuevas.
-    if (c.f) sheet.getRange(CFG.FILA_DATOS, i + 1, filasDatos, 1).setNumberFormat(c.f);
+    const col = sheet.getRange(CFG.FILA_DATOS, i + 1, filasDatos, 1);
+    if (c.f) col.setNumberFormat(c.f);
+    // Fechas y horas centradas; números a la derecha; texto a la izquierda.
+    col.setHorizontalAlignment(c.f && /[dh]/.test(c.f) ? "center" : c.f ? "right" : "left");
   });
   sheet.setFrozenRows(CFG.FILA_ENCABEZADO);
   sheet.setFrozenColumns(1);
   asegurarFiltro(sheet, Math.max(sheet.getLastRow(), CFG.FILA_DATOS), n);
+  aplicarEstilosDatos(sheet, def);
   protegerConAviso(sheet);
+}
+
+/** Franjas alternas (blanco / cielo) y colores por valor sobre todas las filas de datos. */
+function aplicarEstilosDatos(sheet, def) {
+  const n = def.columnas.length;
+  sheet.getBandings().forEach(b => b.remove());
+  sheet.getRange(CFG.FILA_ENCABEZADO, 1, sheet.getMaxRows() - CFG.FILA_ENCABEZADO + 1, n)
+    .applyRowBanding(SpreadsheetApp.BandingTheme.CYAN, true, false)
+    .setHeaderRowColor(UI.PETROLEO).setFirstRowColor(UI.BLANCO).setSecondRowColor(UI.CIELO);
+  const col = t => {
+    const i = def.columnas.findIndex(c => c.t === t);
+    if (i < 0) throw new Error(`Estilo: no existe la columna «${t}».`);
+    return sheet.getRange(CFG.FILA_DATOS, i + 1, sheet.getMaxRows() - CFG.FILA_DATOS + 1, 1);
+  };
+  sheet.setConditionalFormatRules(def.estilos ? def.estilos(col) : []);
 }
 
 function estructurarListas(sheet) {
@@ -467,7 +568,9 @@ function protegerConAviso(sheet) {
 
 function estructurarInicio(sheet) {
   sheet.clear();
-  titulo(sheet, "A1", "LOGÍSTICA VERDE | Registro de jornadas y KPI");
+  baseHoja(sheet, UI.PETROLEO);
+  titulo(sheet, "A1", "Deja tu Playa Limpia · Registro de jornadas y KPI");
+  sheet.getRange("A2").setValue("Logística Verde").setFontColor(UI.MARINO_SUAVE).setFontWeight("bold");
   const filas = [
     ["Propósito", "Consolidar las jornadas que las brigadas registran en la app «Deja tu Playa Limpia» y calcular indicadores descriptivos."],
     ["Origen de los datos", "Supabase. Menú «Logística Verde → Sincronizar ahora»; además se sincroniza sola todos los días a las 8:00."],
@@ -488,13 +591,17 @@ function estructurarInicio(sheet) {
     ["Área", "Superficie de los sectores elegidos en la app (catálogo), no una medición en terreno."],
     ["Densidad (kg/m²)", "Kg totales ÷ m² limpiados. Con todas las brigadas, cada sector cuenta una sola vez por día aunque lo hayan limpiado dos brigadas."],
   ];
-  sheet.getRange(3, 1, filas.length, 2).setValues(filas);
-  sheet.getRange(3, 1, filas.length, 1).setFontWeight("bold");
-  [3 + 3, 3 + 11].forEach(r => sheet.getRange(r, 1).setFontSize(12).setFontColor(CFG.COLOR_TITULO));
-  sheet.getRange(3, 2, filas.length, 1).setWrap(true);
+  const f0 = 4;
+  sheet.getRange(f0, 1, filas.length, 2).setValues(filas);
+  sheet.getRange(f0, 1, filas.length, 1).setFontWeight("bold");
+  sheet.getRange(f0, 2, filas.length, 1).setWrap(true);
+  // Bloques: Propósito/Origen (0-1), reglas (4-9), definiciones (12-17).
+  [[0, 2], [4, 6], [12, 6]].forEach(([i, k]) => separadores(sheet.getRange(f0 + i, 1, k, 2)));
+  [3, 11].forEach(i => subtitulo(sheet.getRange(f0 + i, 1), filas[i][0]));
+  for (let i = 0; i < filas.length; i++) if (filas[i][1]) sheet.setRowHeight(f0 + i, 30);
   sheet.setColumnWidth(1, 200);
   sheet.setColumnWidth(2, 760);
-  sheet.setFrozenRows(1);
+  sheet.setFrozenRows(2);
 }
 
 // ---------- KPI ----------
@@ -533,10 +640,14 @@ function estructurarKpi(sheet, listas) {
   // clear() no borra las validaciones: si quedaran, escribir B3 antes de darle formato de fecha
   // viola "requireDate" y el script se detiene a mitad del KPI.
   sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart().clearDataValidations();
+  sheet.getBandings().forEach(b => b.remove());
+  sheet.setConditionalFormatRules([]);
   sheet.clear();
+  baseHoja(sheet, UI.VERDE);
 
-  titulo(sheet, "A1", "PANEL KPI | Resumen por filtros");
-  sheet.getRange("A3:A6").setValues([["Desde"], ["Hasta"], ["Playa"], ["Brigada"]]).setFontWeight("bold");
+  titulo(sheet, "A1", "Panel KPI · Resumen por filtros");
+  sheet.getRange("A3:A6").setValues([["Desde"], ["Hasta"], ["Playa"], ["Brigada"]])
+    .setFontWeight("bold").setFontColor(UI.MARINO_SUAVE);
   const hoy = Utilities.formatDate(new Date(), CFG.ZONA, "yyyy-MM-dd").split("-").map(Number);
   const fechaPrevia = v => (v instanceof Date && !isNaN(v.getTime())) ? serialChile(v) : (typeof v === "number" && v > 0 ? v : "");
   const textoPrevio = v => (typeof v === "string" && v.trim() ? v : "Todos");
@@ -553,9 +664,13 @@ function estructurarKpi(sheet, listas) {
     .requireValueInRange(listas.getRange("A2:A"), true).setAllowInvalid(false).build());
   sheet.getRange("B6").setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInRange(listas.getRange("B2:B"), true).setAllowInvalid(false).build());
-  sheet.getRange("B3:B6").setBackground("#FFF8E1");
-  sheet.getRange("D3").setValue("Última sincronización").setFontWeight("bold");
-  sheet.getRange("E3").setNumberFormat("dd-mm-yyyy hh:mm");
+  // Filtros editables en menta, como los campos de la app.
+  sheet.getRange("B3:B6").setBackground(UI.MENTA).setFontWeight("bold").setHorizontalAlignment("left")
+    .setBorder(true, true, true, true, true, true, UI.VERDE, SpreadsheetApp.BorderStyle.SOLID);
+  sheet.getRange("D3").setValue("Última sincronización").setFontColor(UI.MARINO_SUAVE).setFontWeight("bold");
+  sheet.getRange("E3").setNumberFormat("dd-mm-yyyy hh:mm").setFontColor(UI.MARINO_SUAVE);
+  sheet.getRange("D4").setValue("Celdas en verde: elige fechas, playa y brigada.")
+    .setFontColor(UI.MARINO_SUAVE).setFontStyle("italic");
 
   // ---- Indicadores ----
   const c = criterios();
@@ -605,16 +720,19 @@ function estructurarKpi(sheet, listas) {
   sheet.getRange(fila0, 2, ind.length, 1).setFormulas(ind.map(x => [x.f()]));
   // La nota ocupa C:I (la columna C también la usa la tabla por brigada).
   ind.forEach((x, i) => sheet.getRange(fila0 + i, 3, 1, 7).merge().setValue(x.n)
-    .setFontColor("#555555").setWrap(true));
+    .setFontColor(UI.MARINO_SUAVE).setFontSize(9).setFontStyle("italic").setWrap(true));
   ind.forEach((x, i) => sheet.getRange(fila0 + i, 2).setNumberFormat(x.fmt));
-  sheet.getRange(fila0, 2, ind.length, 1).setFontWeight("bold");
+  sheet.getRange(fila0, 1, ind.length, 1).setFontSize(11);
+  sheet.getRange(fila0, 2, ind.length, 1).setFontWeight("bold").setFontSize(13).setHorizontalAlignment("right");
+  separadores(sheet.getRange(fila0, 1, ind.length, 9));
+  for (let i = 0; i < ind.length; i++) sheet.setRowHeight(fila0 + i, 30);
 
   // ---- Comparación por brigada (fechas y playa elegidas; ignora el filtro de brigada) ----
   const fT = fila0 + ind.length + 2;
-  sheet.getRange(fT, 1).setValue("Comparación por brigada (fechas y playa seleccionadas)")
-    .setFontWeight("bold").setFontColor(CFG.COLOR_TITULO);
+  subtitulo(sheet.getRange(fT, 1), "Comparación por brigada (fechas y playa seleccionadas)");
   const cab = ["Brigada", "Jornadas", "Kg totales", "Kg reciclable", "% valorizado",
-    "Voluntario-horas", "Kg/voluntario-hora", "Área m²", "Kg/m²"];
+    "Voluntario-horas", "Kg/voluntario-hora", "Área m²", "Kg/m²", "Kg totales (barra)"];
+  const fB0 = fT + 2, fB1 = fT + 1 + CFG.MAX_BRIGADAS_KPI;
   encabezado(sheet.getRange(fT + 1, 1, 1, cab.length).setValues([cab]));
   const formulas = [];
   for (let i = 0; i < CFG.MAX_BRIGADAS_KPI; i++) {
@@ -632,12 +750,14 @@ function estructurarKpi(sheet, listas) {
       si(`IF(OR(C${r}=0,F${r}=0),"",C${r}/F${r})`),
       si(`SUMIFS(${rj("Área (m²)")},${cb})`),
       si(`IF(OR(C${r}=0,H${r}=0),"",C${r}/H${r})`),
+      // Barra proporcional al mayor kg de la tabla.
+      si(`IFERROR(SPARKLINE(C${r},{"charttype","bar";"max",MAX($C$${fB0}:$C$${fB1});"color1","${UI.VERDE}"}),"")`),
     ]);
   }
   const rTot = fT + 2 + CFG.MAX_BRIGADAS_KPI;
   formulas.push([
     "", `=${R.jor}`, `=${R.kgT}`, `=${R.kgR}`, `=${R.pct}`,
-    `=${R.vh}`, `=${R.kvh}`, `=${R.area}`, `=${R.kgm2}`,
+    `=${R.vh}`, `=${R.kvh}`, `=${R.area}`, `=${R.kgm2}`, "",
   ]);
   sheet.getRange(fT + 2, 1, formulas.length, cab.length).setFormulas(formulas);
   sheet.getRange(rTot, 1).setValue("TOTAL filtrado");
@@ -645,12 +765,19 @@ function estructurarKpi(sheet, listas) {
   [["B", "0"], ["C", "#,##0.00"], ["D", "#,##0.00"], ["E", "0.0%"], ["F", "#,##0.00"],
     ["G", "0.00"], ["H", "#,##0"], ["I", "0.000"]]
     .forEach(([col, fmt]) => sheet.getRange(`${col}${fT + 2}:${col}${fT + 1 + filasT}`).setNumberFormat(fmt));
-  sheet.getRange(rTot, 1, 1, cab.length).setFontWeight("bold").setBackground("#E8F5E9");
+  sheet.getRange(fB0, 2, CFG.MAX_BRIGADAS_KPI + 1, cab.length - 2).setHorizontalAlignment("right");
+  sheet.getRange(fT + 1, 1, CFG.MAX_BRIGADAS_KPI + 1, cab.length)
+    .applyRowBanding(SpreadsheetApp.BandingTheme.CYAN, true, false)
+    .setHeaderRowColor(UI.PETROLEO).setFirstRowColor(UI.BLANCO).setSecondRowColor(UI.CIELO);
+  for (let r = fB0; r <= rTot; r++) sheet.setRowHeight(r, 26);
+  sheet.getRange(rTot, 1, 1, cab.length).setFontWeight("bold").setBackground(UI.PETROLEO_CLARO)
+    .setBorder(true, null, null, null, null, null, UI.PETROLEO, SpreadsheetApp.BorderStyle.SOLID);
 
   // ---- Lectura responsable ----
   const fL = rTot + 3;
-  sheet.getRange(fL, 1).setValue("Lectura responsable").setFontWeight("bold").setFontColor(CFG.COLOR_TITULO);
-  sheet.getRange(fL + 1, 1, 1, cab.length).merge().setWrap(true).setVerticalAlignment("top").setValue(
+  subtitulo(sheet.getRange(fL, 1), "Lectura responsable");
+  sheet.getRange(fL + 1, 1, 1, cab.length).merge().setWrap(true).setVerticalAlignment("top")
+    .setFontColor(UI.MARINO_SUAVE).setValue(
     "La fila TOTAL usa los filtros de arriba, incluida la brigada. El área total con «Todos» cuenta cada sector una vez " +
     "por día; la suma de la columna «Área m²» por brigada puede ser mayor si dos brigadas limpiaron el mismo sector. " +
     "Un cero puede significar ausencia de registros, no ausencia de residuos.");
@@ -659,6 +786,7 @@ function estructurarKpi(sheet, listas) {
   sheet.setColumnWidth(1, 240);
   sheet.setColumnWidth(2, 130);
   sheet.setColumnWidth(3, 120);
-  for (let col = 4; col <= cab.length; col++) sheet.setColumnWidth(col, 115);
+  for (let col = 4; col < cab.length; col++) sheet.setColumnWidth(col, 115);
+  sheet.setColumnWidth(cab.length, 170);
   sheet.setFrozenRows(6);
 }

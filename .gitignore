@@ -45,3 +45,6 @@ Thumbs.db
 # Planillas de la clienta (referencia local, fuera del repo) y archivos temporales de Office
 *.xlsx
 ~$*
+
+# clasp: ID del script de la planilla (local)
+.clasp.json

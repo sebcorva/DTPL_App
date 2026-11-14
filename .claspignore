@@ -1,0 +1,4 @@
+# clasp solo sube el conector y el manifiesto (rootDir = docs)
+**/**
+!google_sheets_supabase_connector.gs
+!appsscript.json

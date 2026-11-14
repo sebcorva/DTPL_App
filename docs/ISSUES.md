@@ -220,12 +220,19 @@
 
 ## 🚀 Épica 9: Despliegue y Piloto
 
-### `[ISSUE-27]` Conector Google Sheets mínimo (clave secreta + nuevo esquema) · 0,25 d
-* **Descripción:** mantener el conector funcionando hasta el rediseño de la planilla (ISSUE-29). ⚠️ Incluir la protección contra inyección de fórmulas de ISSUE-58.
+### `[ISSUE-27]` Conector Google Sheets v5: estructura de la planilla + carga desde las vistas · ~1 d
+* **Descripción:** se rehace el conector (`google_sheets_supabase_connector.gs`) para la planilla definida en ISSUE-30. El actual no funciona: lee `vista_reporte_jornadas` (eliminada en la v4) y columnas de la v2 (`cuadrilla`, `id_usuario`). ⚠️ Incluir la protección contra inyección de fórmulas de ISSUE-58.
+> **Decisiones del 13-11-2026:** Google Sheets alimentado por Apps Script (no Power Query en Excel: obligaría a guardar la clave secreta en cada equipo). La estructura la crea el script (versionada en el repo); la clienta puede retocar formatos a mano.
 * **Criterios de aceptación:**
-  - [ ] Leer `SUPABASE_SECRET_KEY` desde Script Properties (nunca en el código ni en el repositorio).
-  - [ ] Cambiar la columna "ID Líder (FK)" por "N° Participantes".
-  - [ ] El *keep-alive* diario sigue funcionando.
+  - [ ] Leer `SUPABASE_URL` y `SUPABASE_SECRET_KEY` desde Script Properties (nunca en el código ni en el repositorio).
+  - [ ] `crearEstructura()`: crea las pestañas Inicio, KPI, Jornadas, Residuos, Herramientas y Listas (oculta) con encabezados, formatos, listas desplegables y fórmulas del KPI; se puede volver a ejecutar sin duplicar nada.
+  - [ ] `sincronizar()`: lee las vistas de ISSUE-30 y los catálogos (playas y brigadas activas → Listas) y escribe cada una en su pestaña desde la fila 6, **borrando solo el rango de datos** (no `clearContents()` de la hoja).
+  - [ ] Paginación con el encabezado `Range` (PostgREST entrega máx. 1.000 filas por consulta).
+  - [ ] Fechas y horas como valores de fecha reales (hora de Chile), no texto; números como números.
+  - [ ] Anteponer `'` solo a los textos libres (nombres, motivos, N° de guía) antes de `setValues()` (ISSUE-58); nunca a fechas ni números.
+  - [ ] Fotos: 3 columnas (Inicio, Limpio, Sacos) con `=HYPERLINK(url;"Ver foto")`, URL armada con la ruta (`…/storage/v1/object/public/evidencias-fotos/<ruta>`), u `Omitida: <motivo>`.
+  - [ ] Menú "Logística Verde → Sincronizar" y disparador diario, que además es el *keep-alive*.
+  - [ ] Prueba: con datos de prueba, los KPI de la planilla coinciden con la P10 de cada jornada.
 
 ### `[ISSUE-28]` Despliegue y entorno · 0,5 d
 * **Criterios de aceptación:**
@@ -463,8 +470,26 @@
   - [x] Verificado en emulador (1080×2400) desde "Última jornada": imagen con logo y playa de fondo, tarjeta blanca, botones nuevos; "Guardar en galería" muestra el aviso verde y se desvanece a los ~3 s. *Sin probar: compartir en Instagram (no está instalado en el emulador) y "No se encontró la jornada".*
 * En la vista previa la imagen se recorta (`Crop`) en vez de ajustarse, para no dejar franjas por el margen de la tarjeta.
 
-### `[ISSUE-30]` 🔒 Rediseño de la planilla / `TABLERO_KPIs` desde Supabase — **bloqueado por la clienta**
-* Pendiente de que la clienta reformule la planilla. Luego: definir columnas y KPIs (densidad diaria deduplicada, horas-voluntario con `total_participantes`, productividad, % valorización) y adaptar el conector.
+### `[ISSUE-30]` Planilla de registro y KPI desde Supabase (vistas SQL) · ~0,5 d
+* **Origen:** la clienta entregó `Planilla_Registro_y_KPI_Logistica_Verde_v2.xlsx` (13-11-2026). Se mantiene su estructura de pestañas, ajustada a lo que la app realmente registra. **Sin cambios en las tablas:** todo sale de vistas (solo `service_role`, `security_invoker`).
+* **Problemas de la planilla original que se corrigen:** peso por categoría de residuo (la app pesa por jornada: normal y reciclable); brigadas `BR-A…`/`BR-APOYO` (la app usa el catálogo: "Brigada A"…); fechas que llegarían como texto y no filtran; "ID de jornada común" (no existe: `id_registro` es por brigada); cantidades de herramientas (cada fila es una unidad); columnas de estado de sincronización y validación (todo lo que está en Supabase ya pasó la RPC); área sumada dos veces si dos brigadas eligen el mismo sector el mismo día; "Sin datos" en celdas numéricas (no se grafica: usar `""`).
+> **Decisiones del 13-11-2026:**
+> - **Voluntario-horas** = total de participantes (líder + voluntarios) × duración en horas.
+> - **kg valorizados** = `kg_basura_reciclable` completo, **incluido** el destino "Pendiente de entrega" (se limpió de la playa y se entregará). % valorizado = kg reciclable / kg totales (GLOSSARY).
+> - **Herramienta_ID** = `qr_codigo` (código interno); la app no muestra el QR.
+> - El KPI **no** agrega kg pendientes ni herramientas dañadas/extraviadas.
+* **Pestañas:**
+  - **Inicio:** propósito, reglas (los datos vienen de Supabase y no se editan; una fila = una brigada en una jornada; un cero puede ser ausencia de registros) y definiciones actualizadas.
+  - **KPI:** filtros Desde / Hasta / Playa / Brigada (listas desde Listas). Indicadores: jornadas, kg normal, kg reciclable, kg totales, voluntario-horas, kg/voluntario-hora, área, kg/m², kg valorizados, % valorizado, km recorridos, sacos. Comparación por brigada. Área total y kg/m² total con el área sin sectores repetidos.
+  - **Jornadas** (una fila por `id_registro`): ID, fecha, playa, sectores, brigada, líder, N° participantes, hora inicio, hora término, duración (h), área (m²), km, voluntario-horas, sacos, kg normal, kg reciclable, kg totales, encargado de pesaje, destino normal, N° guía, destino reciclable, foto inicio, foto limpio, foto sacos.
+  - **Residuos** (una fila por jornada y tipo, sin cantidades 0): ID jornada, fecha, playa, brigada, tipo de residuo, categoría de origen, cantidad.
+  - **Herramientas** (una fila por herramienta y jornada): ID jornada, fecha, playa, brigada, Herramienta_ID, nombre, estado final.
+  - **Listas** (oculta): playas y brigadas activas.
+* **Criterios de aceptación:**
+  - [ ] `vista_jornada`: agregar al final `duracion_h` y `voluntario_horas`.
+  - [ ] `vista_residuos`, `vista_herramientas` y `vista_area_diaria` (área por playa y `fecha_jornada` contando cada sector una sola vez).
+  - [ ] `REVOKE` a `anon` y `authenticated` en todas las vistas.
+  - [ ] Ejecutar en Supabase y comprobar con datos de prueba.
 
 ### `[ISSUE-42]` ✅ Manejo de excepciones y mensajes de error · ~1,5 d
 * **Origen (31-10-2026):** la sincronización falló con `HTTP 404 … Could not find the function public.sincronizar_jornada(p) in the schema cache` (PGRST202; los catálogos con PGRST205). Causa: en Supabase se ejecutó el reset v4 pero no `supabase_schema.sql` (o PostgREST no recargó su caché). La app no perdió datos (las jornadas siguen `PENDIENTE_SYNC`), pero mostró al líder un mensaje técnico y la descarga de catálogos falló **en silencio**.
@@ -586,7 +611,7 @@
 | 6 | ISSUE-41 ✅ (UI P1), ISSUE-42 → 28 → 29 | 3,5 d |
 | 6b | Seguridad antes del piloto: ISSUE-59, ISSUE-60, ISSUE-58 (parte RPC); luego ISSUE-57 vía ISSUE-38 | ~1 d |
 | 6c | Modelo v5: ISSUE-62 → 63 → 64 | ~2 d |
-| 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38, ISSUE-43 (catálogos, por decidir) | 1,75 d |
+| 7 | ISSUE-30 → 27 (vistas SQL, planilla y conector), ISSUE-37, ISSUE-38 | 2,25 d |
 | **Total** | | **≈ 16 días** |
 
 ```mermaid
@@ -606,5 +631,5 @@ flowchart LR
     I23 --> I28
     I26 --> I28
     I28 --> I29["29 Piloto QA"]
-    I30["30 Planilla 🔒"] -.-> I29
+    I30["30 Vistas planilla"] --> I27
 ```

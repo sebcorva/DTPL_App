@@ -21,7 +21,11 @@ data class JornadaEntity(
     @ColumnInfo(name = "pantalla_actual")
     val pantallaActual: Int = 2,
 
-    // "Brigada A".."Brigada D"
+    // ISSUE-62: brigada elegida del catálogo de la playa (id para Supabase, nombre para mostrar)
+    @ColumnInfo(name = "id_brigada")
+    @SerializedName("id_brigada")
+    val idBrigada: String = "",
+
     @ColumnInfo(name = "brigada")
     @SerializedName("brigada")
     val brigada: String = "",
@@ -74,13 +78,14 @@ data class JornadaEntity(
     @SerializedName("hora_fin_ms")
     val horaFinMs: Long = 0L,
 
+    // ISSUE-62: null = aún no hay lectura de GPS (antes 0, 0, que es un punto real en el golfo de Guinea)
     @ColumnInfo(name = "latitud_inicial")
     @SerializedName("latitud_inicial")
-    val latitudInicial: Double = 0.0,
+    val latitudInicial: Double? = null,
 
     @ColumnInfo(name = "longitud_inicial")
     @SerializedName("longitud_inicial")
-    val longitudInicial: Double = 0.0,
+    val longitudInicial: Double? = null,
 
     @ColumnInfo(name = "km_recorridos")
     @SerializedName("km_recorridos")
@@ -100,17 +105,16 @@ data class JornadaEntity(
     @ColumnInfo(name = "path_foto_sacos")
     val pathFotoSacos: String = "",
 
-    @ColumnInfo(name = "url_foto_inicio")
-    @SerializedName("url_foto_inicio")
-    val urlFotoInicio: String? = null,
+    // ISSUE-62: ruta de la foto dentro del bucket (REG-…_1_inicio.jpg), no la URL.
+    // null hasta que la foto se sube; un reintento no la vuelve a subir.
+    @ColumnInfo(name = "ruta_foto_inicio")
+    val rutaFotoInicio: String? = null,
 
-    @ColumnInfo(name = "url_foto_limpio")
-    @SerializedName("url_foto_limpio")
-    val urlFotoLimpio: String? = null,
+    @ColumnInfo(name = "ruta_foto_limpio")
+    val rutaFotoLimpio: String? = null,
 
-    @ColumnInfo(name = "url_foto_sacos")
-    @SerializedName("url_foto_sacos")
-    val urlFotoSacos: String? = null,
+    @ColumnInfo(name = "ruta_foto_sacos")
+    val rutaFotoSacos: String? = null,
 
     // ISSUE-35: motivo obligatorio cuando se omite una foto (null si la foto se tomó)
     @ColumnInfo(name = "motivo_omision_inicio")

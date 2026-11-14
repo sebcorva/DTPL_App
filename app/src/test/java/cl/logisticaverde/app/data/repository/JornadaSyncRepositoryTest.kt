@@ -2,6 +2,7 @@ package cl.logisticaverde.app.data.repository
 
 import cl.logisticaverde.app.data.local.db.CatalogoSeedData
 import cl.logisticaverde.app.data.local.entity.BasuraRecolectadaEntity
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaJornadaEntity
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
@@ -9,6 +10,7 @@ import cl.logisticaverde.app.data.local.entity.ParticipanteJornadaEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.TipoBasuraCatalogoEntity
+import cl.logisticaverde.app.data.remote.FotoRpcDto
 import cl.logisticaverde.app.data.remote.SincronizarJornadaRequest
 import cl.logisticaverde.app.data.remote.SupabaseApi
 import cl.logisticaverde.app.domain.sync.ErrorSync
@@ -19,6 +21,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -50,8 +53,7 @@ class JornadaSyncRepositoryTest {
         catalogoDao = fakeCatalogoDao,
         jornadaDao = fakeJornadaDao,
         supabaseApi = fakeApi,
-        isCloudConfigured = { configurado },
-        publicPhotoUrlBuilder = { "https://test.supabase.co/storage/v1/object/public/evidencias-fotos/$it" }
+        isCloudConfigured = { configurado }
     )
 
     /** Jornada PENDIENTE_SYNC con 2 fotos (la de sacos se omitió), participantes, una herramienta y conteo. */
@@ -61,6 +63,7 @@ class JornadaSyncRepositoryTest {
         fakeJornadaDao.insertJornada(
             JornadaEntity(
                 idRegistro = idRegistro,
+                idBrigada = "BRIGADA-02",
                 brigada = "Brigada B",
                 fechaJornada = "2026-11-16",
                 idPlaya = CatalogoSeedData.ID_PLAYA_GRANDE,
@@ -145,12 +148,19 @@ class JornadaSyncRepositoryTest {
         val payload = fakeApi.rpcRecibidas.single().payload
         assertEquals(idRegistro, payload.jornada.idRegistro)
         assertEquals(listOf("SECTOR-01", "SECTOR-02"), payload.jornada.sectoresIds)
-        assertNull(payload.jornada.urlFotoSacos)
-        assertEquals("Sin batería", payload.jornada.motivoOmisionSacos)
-        assertNull("La foto de inicio se subió: su motivo no viaja", payload.jornada.motivoOmisionInicio)
+        // ISSUE-62: las 3 fotos con su ruta exacta en el bucket, o con motivo
+        assertEquals(
+            listOf(
+                FotoRpcDto("inicio", "${idRegistro}_1_inicio.jpg", null),
+                FotoRpcDto("limpio", "${idRegistro}_2_limpio.jpg", null),
+                FotoRpcDto("sacos", null, "Sin batería")
+            ),
+            payload.fotos
+        )
         assertEquals(CatalogoSeedData.ID_PLAYA_GRANDE, payload.jornada.idPlaya)
+        assertEquals("BRIGADA-02", payload.jornada.idBrigada)
+        assertNull("Sin lectura de GPS la coordenada viaja vacía", payload.jornada.latitudInicial)
         assertEquals("2026-11-16", payload.jornada.fechaJornada)
-        assertTrue(payload.jornada.urlFotoInicio!!.endsWith("/evidencias-fotos/${idRegistro}_1_inicio.jpg"))
         assertEquals(listOf("Vanessa" to "LIDER", "Diego" to "VOLUNTARIO"), payload.participantes.map { it.nombre to it.rol })
         assertEquals("Dañado", payload.herramientas.single().estadoFinal)
         assertEquals(412, payload.basura.first { it.idTipoBasura == "COLILLAS" }.cantidad)
@@ -169,9 +179,15 @@ class JornadaSyncRepositoryTest {
         listOf("\"sectores_ids\":[\"SECTOR-01\",\"SECTOR-02\"]", "\"participantes\":", "\"herramientas\":",
             "\"basura\":", "\"encargado_pesaje\":\"Rosa Acopio\"", "\"qr_codigo\":\"INV-02-PINZA-03\"",
             "\"id_tipo_basura\":\"COLILLAS\"", "\"estado_final\":\"Dañado\"",
-            "\"brigada\":\"Brigada B\"", "\"fecha_jornada\":\"2026-11-16\"", "\"id_playa\":\"PLAYA-01\"",
-            "\"sin_herramientas\":false", "\"motivo_omision_sacos\":\"Sin batería\"").forEach {
+            "\"id_brigada\":\"BRIGADA-02\"", "\"fecha_jornada\":\"2026-11-16\"", "\"id_playa\":\"PLAYA-01\"",
+            "\"sin_herramientas\":false",
+            "\"fotos\":[{\"tipo\":\"inicio\",\"ruta\":\"${idRegistro}_1_inicio.jpg\"}",
+            "{\"tipo\":\"sacos\",\"motivo_omision\":\"Sin batería\"}").forEach {
             assertTrue("Falta $it en $json", json.contains(it))
+        }
+        // ISSUE-62: sin GPS la coordenada no viaja (null), y la brigada se envía por id, no por nombre
+        listOf("\"latitud_inicial\"", "\"brigada\":").forEach {
+            assertFalse("Sobra $it en $json", json.contains(it))
         }
     }
 
@@ -209,7 +225,7 @@ class JornadaSyncRepositoryTest {
 
         assertEquals(1, result.successCount)
         assertEquals(JornadaEntity.SYNC_SINCRONIZADO, estadoEnRoom())
-        assertNotNull(fakeApi.rpcRecibidas.single().payload.jornada.urlFotoLimpio)
+        assertEquals("${idRegistro}_2_limpio.jpg", fakeApi.rpcRecibidas.single().payload.fotos[1].ruta)
     }
 
     @Test
@@ -231,7 +247,7 @@ class JornadaSyncRepositoryTest {
         val enRoom = fakeJornadaDao.getJornadaById(idRegistro)!!
         assertEquals(JornadaEntity.SYNC_ERROR, enRoom.estadoSync)
         assertEquals("Promedio por saco supera 25 kg (Ley 20.949)", enRoom.motivoErrorSync)
-        assertNotNull(enRoom.urlFotoInicio)
+        assertNotNull(enRoom.rutaFotoInicio)
 
         // Una rechazada no vuelve a intentarse sola en la sincronización normal
         assertEquals(0, repository().sincronizarJornadasPendientes().failedCount)
@@ -450,6 +466,9 @@ class JornadaSyncRepositoryTest {
             catalogo(emptyList())
 
         override suspend fun getPlayasCatalogo(select: String): Response<List<PlayaCatalogoEntity>> =
+            catalogo(emptyList())
+
+        override suspend fun getBrigadasCatalogo(select: String): Response<List<BrigadaCatalogoEntity>> =
             catalogo(emptyList())
 
         override suspend fun getSectoresCatalogo(select: String): Response<List<SectorCatalogoEntity>> =

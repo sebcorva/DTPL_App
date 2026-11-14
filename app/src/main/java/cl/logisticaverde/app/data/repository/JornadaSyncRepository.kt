@@ -4,6 +4,7 @@ import cl.logisticaverde.app.data.local.db.CatalogoDao
 import cl.logisticaverde.app.data.local.db.JornadaDao
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
 import cl.logisticaverde.app.data.remote.BasuraRpcDto
+import cl.logisticaverde.app.data.remote.FotoRpcDto
 import cl.logisticaverde.app.data.remote.HerramientaRpcDto
 import cl.logisticaverde.app.data.remote.JornadaRpcDto
 import cl.logisticaverde.app.data.remote.JornadaSyncPayload
@@ -57,14 +58,19 @@ class JornadaSyncRepository(
     private val catalogoDao: CatalogoDao,
     private val jornadaDao: JornadaDao,
     private val supabaseApi: SupabaseApi = SupabaseClient.api,
-    private val isCloudConfigured: () -> Boolean = { SupabaseClient.isConfigured() },
-    private val publicPhotoUrlBuilder: (String) -> String = { SupabaseClient.buildPublicPhotoUrl(it) }
+    private val isCloudConfigured: () -> Boolean = { SupabaseClient.isConfigured() }
 ) {
 
     companion object {
         const val RPC_INSERTADA = "INSERTADA"
         const val RPC_YA_EXISTIA = "YA_EXISTIA"
         const val RPC_PREFIJO_RECHAZADA = "RECHAZADA"
+        const val FOTO_INICIO = "inicio"
+        const val FOTO_LIMPIO = "limpio"
+        const val FOTO_SACOS = "sacos"
+
+        /** Ruta de una foto dentro del bucket; la RPC exige exactamente este formato (ISSUE-62). */
+        fun rutaFoto(idRegistro: String, numero: Int, tipo: String) = "${idRegistro}_${numero}_$tipo.jpg"
         private const val TAG = "JornadaSync"
     }
 
@@ -95,6 +101,10 @@ class JornadaSyncRepository(
 
             supabaseApi.getTiposBasuraCatalogo().cuerpoOError("catálogo de residuos")
                 .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertTiposBasura(it) }
+
+            // ISSUE-62: brigadas de cada playa
+            supabaseApi.getBrigadasCatalogo().cuerpoOError("catálogo de brigadas")
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertBrigadas(it) }
 
             // Playas antes que sectores: cada sector pertenece a una playa.
             // ISSUE-43: se reemplazan por completo, así lo borrado en Supabase desaparece del teléfono.
@@ -178,19 +188,21 @@ class JornadaSyncRepository(
     /** Devuelve null si la jornada quedó en Supabase, o el error si no. */
     private suspend fun sincronizarUna(jornada: JornadaEntity): ErrorSync? = try {
         // 1. Fotos (idempotentes: un reintento que encuentra la foto ya subida cuenta como éxito)
-        val urlInicio = uploadPhotoStrict(jornada.pathFotoInicio, jornada.urlFotoInicio, "${jornada.idRegistro}_1_inicio.jpg")
-        val urlLimpio = uploadPhotoStrict(jornada.pathFotoLimpio, jornada.urlFotoLimpio, "${jornada.idRegistro}_2_limpio.jpg")
-        val urlSacos = uploadPhotoStrict(jornada.pathFotoSacos, jornada.urlFotoSacos, "${jornada.idRegistro}_3_sacos.jpg")
+        val id = jornada.idRegistro
+        val rutaInicio = uploadPhotoStrict(jornada.pathFotoInicio, jornada.rutaFotoInicio, rutaFoto(id, 1, FOTO_INICIO))
+        val rutaLimpio = uploadPhotoStrict(jornada.pathFotoLimpio, jornada.rutaFotoLimpio, rutaFoto(id, 2, FOTO_LIMPIO))
+        val rutaSacos = uploadPhotoStrict(jornada.pathFotoSacos, jornada.rutaFotoSacos, rutaFoto(id, 3, FOTO_SACOS))
 
-        // Se guardan las URLs ya obtenidas: si la RPC falla, el reintento no vuelve a subir fotos
-        val conUrls = jornada.copy(urlFotoInicio = urlInicio, urlFotoLimpio = urlLimpio, urlFotoSacos = urlSacos)
-        jornadaDao.updateJornada(conUrls)
+        // Se guardan las rutas ya subidas: si la RPC falla, el reintento no vuelve a subir fotos
+        val conRutas = jornada.copy(rutaFotoInicio = rutaInicio, rutaFotoLimpio = rutaLimpio, rutaFotoSacos = rutaSacos)
+        jornadaDao.updateJornada(conRutas)
 
         // 2. Una sola llamada transaccional con toda la jornada
         val herramientas = jornadaDao.getHerramientasJornadaList(jornada.idRegistro)
         val request = SincronizarJornadaRequest(
             JornadaSyncPayload(
-                jornada = conUrls.toRpcDto(),
+                jornada = conRutas.toRpcDto(),
+                fotos = conRutas.toFotosRpc(),
                 participantes = jornadaDao.getParticipantesList(jornada.idRegistro)
                     .map { ParticipanteRpcDto(nombre = it.nombre, rol = it.rol) },
                 herramientas = herramientas
@@ -227,15 +239,15 @@ class JornadaSyncRepository(
     }
 
     /**
-     * Sube una foto local a Supabase Storage sin sobrescribir.
-     * Si el archivo ya existe en el bucket (reintento tras un corte), se considera éxito.
+     * Sube una foto local a Supabase Storage sin sobrescribir y devuelve su ruta en el bucket
+     * (null si no hay foto). Si el archivo ya existe (reintento tras un corte), se considera éxito.
      */
     private suspend fun uploadPhotoStrict(
         localPath: String,
-        existingRemoteUrl: String?,
+        rutaYaSubida: String?,
         remoteFileName: String
     ): String? {
-        if (!existingRemoteUrl.isNullOrBlank()) return existingRemoteUrl
+        if (!rutaYaSubida.isNullOrBlank()) return rutaYaSubida
         if (localPath.isBlank()) return null
 
         val file = File(localPath)
@@ -251,7 +263,7 @@ class JornadaSyncRepository(
                 throw errorHttp(response.code(), cuerpo, "al subir foto $remoteFileName")
             }
         }
-        return publicPhotoUrlBuilder(remoteFileName)
+        return remoteFileName
     }
 
     /** Storage responde 409, o 400 con `"error":"Duplicate"`, según la versión de Supabase. */
@@ -295,9 +307,9 @@ class JornadaSyncRepository(
 
     private fun JornadaEntity.toRpcDto() = JornadaRpcDto(
         idRegistro = idRegistro,
-        brigada = brigada,
         fechaJornada = fechaJornada,
         idPlaya = idPlaya,
+        idBrigada = idBrigada,
         sectoresIds = sectoresIdsCsv.split(",").map { it.trim() }.filter { it.isNotEmpty() },
         sinHerramientas = sinHerramientas,
         horaInicioMs = horaInicioMs,
@@ -305,13 +317,6 @@ class JornadaSyncRepository(
         latitudInicial = latitudInicial,
         longitudInicial = longitudInicial,
         kmRecorridos = kmRecorridos,
-        urlFotoInicio = urlFotoInicio,
-        urlFotoLimpio = urlFotoLimpio,
-        urlFotoSacos = urlFotoSacos,
-        // Solo se envía el motivo de las fotos que efectivamente no tienen URL
-        motivoOmisionInicio = motivoOmisionInicio.takeIf { urlFotoInicio == null },
-        motivoOmisionLimpio = motivoOmisionLimpio.takeIf { urlFotoLimpio == null },
-        motivoOmisionSacos = motivoOmisionSacos.takeIf { urlFotoSacos == null },
         cantidadSacos = cantidadSacos,
         kgBasuraNormal = kgBasuraNormal,
         kgBasuraReciclable = kgBasuraReciclable,
@@ -319,5 +324,12 @@ class JornadaSyncRepository(
         destinoBasuraNormal = destinoBasuraNormal,
         nroGuiaDespacho = nroGuiaDespacho,
         destinoBasuraReciclable = destinoBasuraReciclable
+    )
+
+    /** Las 3 fotos: con ruta si se subió; si no, con su motivo (solo se envía el de las que no tienen ruta). */
+    private fun JornadaEntity.toFotosRpc() = listOf(
+        FotoRpcDto(FOTO_INICIO, rutaFotoInicio, motivoOmisionInicio.takeIf { rutaFotoInicio == null }),
+        FotoRpcDto(FOTO_LIMPIO, rutaFotoLimpio, motivoOmisionLimpio.takeIf { rutaFotoLimpio == null }),
+        FotoRpcDto(FOTO_SACOS, rutaFotoSacos, motivoOmisionSacos.takeIf { rutaFotoSacos == null })
     )
 }

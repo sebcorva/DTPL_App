@@ -542,7 +542,7 @@
 
 > **Criterio de la clienta/desarrollador:** todo dato que se servirá en la planilla, una web o informes vive en tablas con su PK y FK; lo derivado (nombres, listas, totales) se entrega en vistas, no como copias en `jornada`.
 
-### `[ISSUE-62]` Modelo v5 en Supabase: brigadas por playa, sectores y fotos en tablas, tipos exactos · ~1,5 d
+### `[ISSUE-62]` ✅ Modelo v5 en Supabase: brigadas por playa, sectores y fotos en tablas, tipos exactos · ~1,5 d
 * **Hallazgos:** los sectores de una jornada eran un arreglo `TEXT[]` sin FK; las brigadas, un `CHECK` fijo en el SQL y la app; kg y km en `REAL` (float de 32 bits: `20.1 + 9.3 = 29.399999`); horas en milisegundos (`BIGINT`); GPS sin lectura guardado como (0, 0) (un punto en el golfo de Guinea); fotos como 6 columnas con la URL completa y sin amarrar cada URL a su tipo.
 * **Decisiones del 13-11-2026:**
   - `brigada_catalogo` (`id_brigada`, `id_playa` FK, `nombre_brigada`, `is_activo`): cada playa tiene sus brigadas. En la P2 se elige **primero la playa** y luego aparecen sus brigadas. Semilla: PLAYA-01 con Brigadas A–D.

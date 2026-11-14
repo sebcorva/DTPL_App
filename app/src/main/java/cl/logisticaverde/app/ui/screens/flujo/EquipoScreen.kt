@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cl.logisticaverde.app.R
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.ui.theme.AzulMarino
 import cl.logisticaverde.app.ui.theme.AzulMarinoSuave
@@ -77,7 +78,8 @@ import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
 
 /**
  * Pantalla 2 "Conformar Brigada" (diseño ISSUE-44):
- * - Tarjeta 1: nombre del líder (mínimo 3 caracteres), brigadas en grilla 2×2 y playa (desplegable, ISSUE-32).
+ * - Tarjeta 1: nombre del líder (mínimo 3 caracteres), playa (desplegable, ISSUE-32) y luego las brigadas
+ *   de esa playa en grilla de 2 columnas (ISSUE-62).
  * - Tarjeta 2: voluntarios escritos a mano con botón redondo [+], ícono de voluntarios con globo de cantidad y lista con opción de eliminar.
  * - Cada cambio se guarda en Room al instante (RNF-01); los errores se muestran bajo cada campo.
  * - Botón Siguiente en la parte inferior.
@@ -86,9 +88,9 @@ import cl.logisticaverde.app.ui.theme.VerdeAccionOscuro
 @Composable
 fun EquipoScreen(
     uiState: EquipoSeleccionUiState,
-    brigadas: List<String>,
+    brigadas: List<BrigadaCatalogoEntity>,
     playas: List<PlayaCatalogoEntity>,
-    onSelectBrigada: (String) -> Unit,
+    onSelectBrigada: (BrigadaCatalogoEntity) -> Unit,
     onSelectPlaya: (String) -> Unit,
     onNombreLiderChange: (String) -> Unit,
     onAgregarVoluntario: (String) -> Boolean,
@@ -129,13 +131,7 @@ fun EquipoScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
-            GrillaBrigadas(
-                brigadas = brigadas,
-                seleccionada = uiState.selectedBrigada,
-                onSelect = onSelectBrigada
-            )
-            Spacer(Modifier.height(16.dp))
-            // Playa de la jornada (obligatoria): define los sectores de la Pantalla 3
+            // Playa de la jornada (obligatoria): define sus brigadas y los sectores de la Pantalla 3
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ExposedDropdownMenuBox(
                     expanded = playasExpandido,
@@ -177,6 +173,19 @@ fun EquipoScreen(
                     contentDescription = null,
                     tint = VerdeAccionOscuro,
                     modifier = Modifier.size(36.dp)
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            // ISSUE-62: brigadas de la playa elegida
+            when {
+                uiState.selectedPlayaId.isNullOrBlank() ->
+                    Text("Elige una playa para ver sus brigadas.", color = AzulMarinoSuave)
+                brigadas.isEmpty() ->
+                    Text("Esta playa no tiene brigadas activas.", color = AzulMarinoSuave)
+                else -> GrillaBrigadas(
+                    brigadas = brigadas,
+                    seleccionadaId = uiState.selectedBrigadaId,
+                    onSelect = onSelectBrigada
                 )
             }
         }
@@ -298,14 +307,18 @@ fun EquipoScreen(
 
 /** Brigadas en grilla de 2 columnas; si la cantidad es impar, la última fila queda con un hueco. */
 @Composable
-private fun GrillaBrigadas(brigadas: List<String>, seleccionada: String, onSelect: (String) -> Unit) {
+private fun GrillaBrigadas(
+    brigadas: List<BrigadaCatalogoEntity>,
+    seleccionadaId: String?,
+    onSelect: (BrigadaCatalogoEntity) -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         brigadas.chunked(2).forEach { fila ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 fila.forEach { brigada ->
                     BotonSeleccionFlujo(
-                        texto = brigada,
-                        activo = brigada == seleccionada,
+                        texto = brigada.nombreBrigada,
+                        activo = brigada.idBrigada == seleccionadaId,
                         onClick = { onSelect(brigada) },
                         modifier = Modifier.weight(1f)
                     )

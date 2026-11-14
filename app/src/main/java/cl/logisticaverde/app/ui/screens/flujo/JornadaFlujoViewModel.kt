@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import cl.logisticaverde.app.data.local.db.CatalogoDao
 import cl.logisticaverde.app.data.local.db.JornadaDao
 import cl.logisticaverde.app.data.local.entity.BasuraRecolectadaEntity
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaJornadaEntity
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
@@ -45,7 +46,9 @@ import java.util.UUID
 
 data class EquipoSeleccionUiState(
     val idRegistroActivo: String? = null,
-    val selectedBrigada: String = BRIGADA_POR_DEFECTO,
+    // ISSUE-62: brigada del catálogo de la playa elegida (se elige después de la playa)
+    val selectedBrigadaId: String? = null,
+    val nombreBrigada: String = "",
     // Pantalla 2: nombres escritos a mano (sin padrón de usuarios)
     val nombreLider: String = "",
     val voluntarios: List<String> = emptyList(),
@@ -91,21 +94,21 @@ data class EquipoSeleccionUiState(
     companion object {
         const val MAX_KG_POR_SACO_LEY_20949 = 25.0f
         const val MIN_CARACTERES_NOMBRE_LIDER = 3
-        const val BRIGADA_POR_DEFECTO = "Brigada A"
 
         /** Motivo de una foto omitida: obligatorio y solo con caracteres permitidos (ISSUE-58). */
         fun esMotivoValido(motivo: String): Boolean = motivo.isNotBlank() && ReglasTexto.esMotivoValido(motivo)
     }
 
     /**
-     * Pantalla 2: líder con nombre de al menos 3 caracteres, al menos 1 voluntario y playa elegida.
+     * Pantalla 2: líder con nombre de al menos 3 caracteres, al menos 1 voluntario, playa y brigada elegidas.
      */
     val esEquipoValido: Boolean
         get() = errorNombreLider == null &&
             nombreLider.isNotBlank() &&
             voluntarios.isNotEmpty() &&
             voluntarios.size <= TopesJornada.MAX_VOLUNTARIOS &&
-            !selectedPlayaId.isNullOrBlank()
+            !selectedPlayaId.isNullOrBlank() &&
+            !selectedBrigadaId.isNullOrBlank()
 
     /** P3: foto tomada, u omitida con motivo. */
     val fotoInicioResuelta: Boolean
@@ -248,6 +251,17 @@ class JornadaFlujoViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
+     * P2 (ISSUE-62): brigadas activas de la playa elegida; la ya elegida en la jornada en curso
+     * se mantiene aunque se desactive. Sin playa elegida no hay brigadas.
+     */
+    val brigadasCatalogo: StateFlow<List<BrigadaCatalogoEntity>> = combine(
+        catalogoDao.observeBrigadas(),
+        _uiState.map { it.selectedPlayaId to it.selectedBrigadaId }.distinctUntilChanged()
+    ) { brigadas, (idPlaya, idElegida) ->
+        brigadas.filter { it.idPlaya == idPlaya && (it.estaActiva || it.idBrigada == idElegida) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
      * P3: solo los sectores activos de la playa elegida en P2 (ISSUE-43); los ya elegidos en la
      * jornada en curso se mantienen aunque se desactiven.
      */
@@ -300,17 +314,6 @@ class JornadaFlujoViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /**
-     * Brigadas de Limpieza (A, B, C y D). El rol de pesaje se registra presencialmente
-     * seleccionando al Encargado de Pesaje en la Pantalla 8.
-     */
-    val brigadasDisponibles = listOf(
-        "Brigada A",
-        "Brigada B",
-        "Brigada C",
-        "Brigada D"
-    )
-
     init {
         cargarJornadaEnCursoSiExiste()
         observarKmDesdeRoom()
@@ -349,7 +352,8 @@ class JornadaFlujoViewModel(
                 _uiState.update {
                     it.copy(
                         idRegistroActivo = enCurso.idRegistro,
-                        selectedBrigada = enCurso.brigada.ifBlank { EquipoSeleccionUiState.BRIGADA_POR_DEFECTO },
+                        selectedBrigadaId = enCurso.idBrigada.ifBlank { null },
+                        nombreBrigada = enCurso.brigada,
                         nombreLider = enCurso.nombreLider,
                         voluntarios = voluntarios,
                         selectedPlayaId = enCurso.idPlaya.ifBlank { null },
@@ -408,16 +412,24 @@ class JornadaFlujoViewModel(
     // Serializa las escrituras de P2: varias altas seguidas no deben crear dos jornadas
     private val equipoMutex = Mutex()
 
-    fun selectBrigada(brigada: String) {
-        _uiState.update { it.copy(selectedBrigada = brigada) }
+    fun selectBrigada(brigada: BrigadaCatalogoEntity) {
+        _uiState.update { it.copy(selectedBrigadaId = brigada.idBrigada, nombreBrigada = brigada.nombreBrigada) }
         persistirEquipoEnSegundoPlano()
     }
 
-    /** ISSUE-32: cambiar de playa descarta los sectores marcados (pertenecen a la playa anterior). */
+    /**
+     * ISSUE-32 / ISSUE-62: cambiar de playa descarta los sectores marcados y la brigada elegida
+     * (pertenecen a la playa anterior).
+     */
     fun selectPlaya(idPlaya: String) {
         _uiState.update { current ->
             if (current.selectedPlayaId == idPlaya) current
-            else current.copy(selectedPlayaId = idPlaya, selectedSectoresIds = emptySet())
+            else current.copy(
+                selectedPlayaId = idPlaya,
+                selectedSectoresIds = emptySet(),
+                selectedBrigadaId = null,
+                nombreBrigada = ""
+            )
         }
         persistirEquipoEnSegundoPlano()
     }
@@ -500,7 +512,7 @@ class JornadaFlujoViewModel(
         val hayParticipantes = nombreLider.isNotEmpty() || state.voluntarios.isNotEmpty()
 
         val idRegistro = state.idRegistroActivo
-            ?: if (hayParticipantes) crearJornada(state.selectedBrigada) else return null
+            ?: if (hayParticipantes) crearJornada() else return null
 
         val voluntariosCsv = state.voluntarios.joinToString(", ")
         val actual = jornadaDao.getJornadaById(idRegistro) ?: return null
@@ -511,7 +523,8 @@ class JornadaFlujoViewModel(
         jornadaDao.updateJornada(
             actual.copy(
                 nombreLider = nombreLider,
-                brigada = state.selectedBrigada,
+                idBrigada = state.selectedBrigadaId.orEmpty(),
+                brigada = state.nombreBrigada,
                 voluntariosCsv = voluntariosCsv,
                 totalParticipantes = (if (nombreLider.isNotEmpty()) 1 else 0) + state.voluntarios.size,
                 idPlaya = playa?.idPlaya ?: "",
@@ -549,7 +562,7 @@ class JornadaFlujoViewModel(
         return idRegistro
     }
 
-    private suspend fun crearJornada(brigada: String): String {
+    private suspend fun crearJornada(): String {
         // Fecha de la jornada (ISSUE-31): el día en que se crea en P2, en hora de Chile
         val fechaHoy = FechaJornada.hoy(reloj())
         // ISSUE-59: si el ID ya existe en el teléfono se genera otro; insertJornada usa ABORT,
@@ -565,7 +578,6 @@ class JornadaFlujoViewModel(
             JornadaEntity(
                 idRegistro = nuevoIdRegistro,
                 pantallaActual = 2,
-                brigada = brigada,
                 fechaJornada = FechaJornada.iso(fechaHoy),
                 estadoSync = JornadaEntity.SYNC_EN_CURSO
             )
@@ -1170,6 +1182,7 @@ class JornadaFlujoViewModel(
                 basura = jornadaDao.getBasuraRecolectadaList(idRegistro),
                 sectoresCatalogo = catalogoDao.getSectoresList(),
                 herramientasCatalogo = catalogoDao.observeHerramientasCatalogo().first(),
+                brigadasCatalogo = catalogoDao.getBrigadasList(),
                 ahoraMs = reloj()
             )
             if (problemas.isNotEmpty()) {

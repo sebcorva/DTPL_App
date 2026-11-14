@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
@@ -29,6 +30,16 @@ interface CatalogoDao {
         deletePlayasExcepto(playas.map { it.idPlaya })
         upsertPlayas(playas)
     }
+
+    // --- BRIGADAS (ISSUE-62: cada una pertenece a una playa) ---
+    @Query("SELECT * FROM brigada_catalogo ORDER BY nombre_brigada ASC")
+    fun observeBrigadas(): Flow<List<BrigadaCatalogoEntity>>
+
+    @Query("SELECT * FROM brigada_catalogo ORDER BY nombre_brigada ASC")
+    suspend fun getBrigadasList(): List<BrigadaCatalogoEntity>
+
+    @Upsert
+    suspend fun upsertBrigadas(brigadas: List<BrigadaCatalogoEntity>)
 
     // --- SECTORES (cada uno pertenece a una playa) ---
     @Query("SELECT * FROM sector_catalogo ORDER BY id_sector ASC")

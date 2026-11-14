@@ -75,7 +75,7 @@ interface JornadaDao {
     @Query(
         """
         UPDATE jornada SET latitud_inicial = :lat, longitud_inicial = :lng
-        WHERE id_registro = :idRegistro AND latitud_inicial = 0 AND longitud_inicial = 0
+        WHERE id_registro = :idRegistro AND latitud_inicial IS NULL
         """
     )
     suspend fun updateCoordenadaInicialSiVacia(idRegistro: String, lat: Double, lng: Double)

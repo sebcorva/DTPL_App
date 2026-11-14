@@ -116,11 +116,12 @@ sequenceDiagram
         App->>ST: POST evidencias-fotos/{id}_{n}_{tipo}.jpg (sin x-upsert)
         ST-->>App: 200 OK o "ya existe" (= éxito)
     end
-    App->>RPC: POST jsonb {jornada, participantes, herramientas, basura, urls}
-    RPC->>RPC: BEGIN · validar · INSERT x4 · UPDATE herramienta_catalogo · COMMIT
-    RPC-->>App: INSERTADA | YA_EXISTIA | error
+    App->>DB: ruta_foto_* (rutas ya subidas: un reintento no vuelve a subir)
+    App->>RPC: POST jsonb {jornada, fotos (ruta o motivo), participantes, herramientas, basura}
+    RPC->>RPC: BEGIN · validar · INSERT x6 · UPDATE herramienta_catalogo · COMMIT
+    RPC-->>App: INSERTADA | YA_EXISTIA | RECHAZADA: motivo
     alt OK
-        App->>DB: estado_sync = SINCRONIZADO + urls
+        App->>DB: estado_sync = SINCRONIZADO
     else error
         App->>DB: sin cambios (PENDIENTE_SYNC)
     end

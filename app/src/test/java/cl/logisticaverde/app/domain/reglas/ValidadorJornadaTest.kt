@@ -18,6 +18,7 @@ class ValidadorJornadaTest {
 
     private val jornadaValida = JornadaEntity(
         idRegistro = id,
+        idBrigada = "BRIGADA-01",
         brigada = "Brigada A",
         fechaJornada = "2026-11-16",
         idPlaya = CatalogoSeedData.ID_PLAYA_GRANDE,
@@ -51,7 +52,7 @@ class ValidadorJornadaTest {
         basura: List<BasuraRecolectadaEntity> = this.basura
     ) = ValidadorJornada.validar(
         jornada, participantes, herramientas, basura,
-        CatalogoSeedData.sectoresPlayaGrande, CatalogoSeedData.herramientasQr, ahora
+        CatalogoSeedData.sectoresPlayaGrande, CatalogoSeedData.herramientasQr, CatalogoSeedData.brigadas, ahora
     )
 
     @Test

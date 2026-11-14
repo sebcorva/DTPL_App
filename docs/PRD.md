@@ -179,67 +179,73 @@ flowchart LR
 
 ---
 
-## 4. Modelo de Datos (Room v4 y Supabase v4)
+## 4. Modelo de Datos (Supabase v5 y Room v7)
+
+> **v5 (ISSUE-62, 13-11-2026):** todo dato que se servirá en la planilla, una web o informes vive en tablas con PK y FK; lo derivado se entrega en la vista `vista_jornada`. El diagrama muestra **Supabase**; Room guarda la jornada en curso con algunas diferencias (ver "Tablas").
 
 ```mermaid
 erDiagram
     PLAYA_CATALOGO {
         string id_playa PK
         string nombre_playa
+        bool is_activo
+    }
+    BRIGADA_CATALOGO {
+        string id_brigada PK
+        string id_playa FK
+        string nombre_brigada
+        bool is_activo
     }
     SECTOR_CATALOGO {
         string id_sector PK
         string id_playa FK
         string nombre_sector
         int area_m2
+        bool is_activo
     }
     HERRAMIENTA_CATALOGO {
         string qr_codigo PK
         string nombre_herramienta
         string estado
+        bool is_activo
     }
     TIPO_BASURA_CATALOGO {
         string id_tipo_basura PK
         string nombre_visible
         string categoria_origen
+        bool is_activo
     }
     JORNADA {
         string id_registro PK
-        int pantalla_actual
-        string fecha_jornada
-        string brigada
+        date fecha_jornada
         string id_playa FK
-        string nombre_playa
-        string nombre_lider
-        string voluntarios_csv
-        int total_participantes
-        string sectores_ids_csv
-        string sectores_csv
-        int area_total_m2
+        string id_brigada FK
         bool sin_herramientas
-        long hora_inicio_ms
-        long hora_fin_ms
-        double latitud_inicial
-        double longitud_inicial
-        float km_recorridos
-        string path_foto_inicio
-        string path_foto_limpio
-        string path_foto_sacos
-        string url_foto_inicio
-        string url_foto_limpio
-        string url_foto_sacos
-        string motivo_omision_inicio
-        string motivo_omision_limpio
-        string motivo_omision_sacos
+        timestamptz hora_inicio
+        timestamptz hora_fin
+        double latitud_inicial "NULL sin GPS"
+        double longitud_inicial "NULL sin GPS"
+        numeric km_recorridos
         int cantidad_sacos
-        float kg_basura_normal
-        float kg_basura_reciclable
-        float kg_totales
+        numeric kg_basura_normal
+        numeric kg_basura_reciclable
+        numeric kg_totales "generada"
         string encargado_pesaje
         string destino_basura_normal
         string nro_guia_despacho
         string destino_basura_reciclable
-        string estado_sync
+        timestamptz fecha_sincronizacion
+    }
+    JORNADA_SECTOR {
+        string id_registro PK, FK
+        string id_sector PK, FK
+        int area_m2
+    }
+    FOTO_JORNADA {
+        string id_registro PK, FK
+        string tipo PK
+        string ruta
+        string motivo_omision
     }
     PARTICIPANTE_JORNADA {
         int id PK
@@ -263,7 +269,12 @@ erDiagram
     }
 
     PLAYA_CATALOGO ||--o{ SECTOR_CATALOGO : "se divide en"
+    PLAYA_CATALOGO ||--o{ BRIGADA_CATALOGO : "tiene"
     PLAYA_CATALOGO ||--o{ JORNADA : "se limpia en (P2)"
+    BRIGADA_CATALOGO ||--o{ JORNADA : "realiza (P2)"
+    JORNADA ||--o{ JORNADA_SECTOR : "limpia (P3)"
+    SECTOR_CATALOGO ||--o{ JORNADA_SECTOR : "se limpia en"
+    JORNADA ||--|{ FOTO_JORNADA : "3 fotos (P3 y P6)"
     JORNADA ||--o{ PARTICIPANTE_JORNADA : "integra (P2)"
     JORNADA ||--o{ HERRAMIENTA_JORNADA : "registra en P4 y P7"
     HERRAMIENTA_CATALOGO ||--o{ HERRAMIENTA_JORNADA : "identifica por QR"
@@ -273,18 +284,24 @@ erDiagram
 
 ### Tablas
 
-1. **Catálogos maestros** (solo lectura para la app; semilla local en Room para operar offline desde la instalación):
-   - `playa_catalogo` *(v4)*: `id_playa` (PK, `PLAYA-01` = Playa Grande de Cartagena), `nombre_playa`. Las playas y sus m² se definen antes de usarlas; no hay playas sin sectores.
+1. **Catálogos maestros** (solo lectura para la app; semilla local en Room para operar offline desde la instalación). `is_activo = false` oculta un registro en jornadas nuevas sin borrarlo (ISSUE-43 / ISSUE-63).
+   - `playa_catalogo`: `id_playa` (PK, `PLAYA-01` = Playa Grande de Cartagena), `nombre_playa`. Las playas, sus sectores con sus m² y sus brigadas se definen antes de usarlas.
+   - `brigada_catalogo` *(v5)*: `id_brigada` (PK, `BRIGADA-01`..`04`), `id_playa` (FK), `nombre_brigada` ("Brigada A".."D"). Cada playa tiene sus brigadas; en la P2 se elige primero la playa y luego una de sus brigadas.
    - `sector_catalogo`: `id_sector` (PK, `SECTOR-01`..`04`), `id_playa` (FK), `nombre_sector`, `area_m2` (2.000 c/u = 8.000 m²).
    - `herramienta_catalogo`: `qr_codigo` (PK, código interno que va en el QR: `INV-02-PINZA-01`..`05`, `INV-03-RASTRILLO-01`..`04`), `nombre_herramienta` (lo único visible: "Pinza 1"…"Rastrillo 4"), `estado` (`Operativo` / `Dañado` / `Extraviado`). La pesa digital no es parte del inventario (v4).
    - `tipo_basura_catalogo`: `id_tipo_basura` (PK), `nombre_visible`, `categoria_origen` (`Recreativa` / `Marítima` / `Higiene`). Ver catálogo en GLOSSARY §2.
-2. **`jornada`**: cabecera de la jornada. **Sin** `id_usuario` ni clave foránea a usuarios. `fecha_jornada` (AAAA-MM-DD, hora de Chile) se fija al crearla en P2; `id_playa` + `nombre_playa` identifican la playa; `sin_herramientas` indica que la brigada no llevó herramientas; `motivo_omision_*` es obligatorio para cada foto omitida y nulo si hay foto. `nombre_lider` y `voluntarios_csv` se mantienen como copia de lectura para reportes; la fuente de verdad de los integrantes es `participante_jornada`. `total_participantes = 1 + N voluntarios`. `sectores_ids_csv` guarda los IDs y `sectores_csv` los nombres. Las columnas `pantalla_actual`, `path_foto_*` y `estado_sync` existen **solo en Room**; `fecha_sincronizacion` existe solo en Supabase.
-3. **`participante_jornada`** *(nueva)*: `id` (PK autoincremental local), `id_registro` (FK → jornada, `ON DELETE CASCADE`), `nombre`, `rol` (`LIDER` | `VOLUNTARIO`). Única por `(id_registro, nombre normalizado)`.
-4. **`herramienta_jornada`**: única por `(id_registro, qr_codigo)`.
-5. **`basura_recolectada`**: PK compuesta `(id_registro, id_tipo_basura)`, `cantidad >= 0`.
+2. **`jornada`**: cabecera. `fecha_jornada` (hora de Chile) se fija al crearla en P2. Horas en `TIMESTAMPTZ` (la app envía milisegundos y la RPC convierte); kg y km en `NUMERIC` (sin errores de redondeo); `kg_totales` es columna generada; la coordenada inicial es `NULL` si no hubo lectura de GPS. **No guarda copias derivadas**: el nombre de la playa y la brigada, el líder, los voluntarios, el total de participantes, los sectores y el área se obtienen de sus tablas (`vista_jornada`).
+3. **`jornada_sector`** *(v5)*: PK `(id_registro, id_sector)`; `area_m2` es la del catálogo al sincronizar.
+4. **`foto_jornada`** *(v5)*: PK `(id_registro, tipo)` con `tipo` ∈ `inicio`/`limpio`/`sacos`; `ruta` dentro del bucket (`{id_registro}_{n}_{tipo}.jpg`, no la URL) **o** `motivo_omision`, nunca ambos.
+5. **`participante_jornada`**: `id` (PK), `id_registro` (FK → jornada, `ON DELETE CASCADE`), `nombre`, `rol` (`LIDER` | `VOLUNTARIO`). Única por `(id_registro, nombre normalizado)`.
+6. **`herramienta_jornada`**: única por `(id_registro, qr_codigo)`.
+7. **`basura_recolectada`**: PK compuesta `(id_registro, id_tipo_basura)`, `cantidad >= 0`.
+8. **`vista_jornada`** *(v5)*: una fila por jornada con todo lo derivado; solo accesible con la clave secreta. Base de la planilla y los informes (ISSUE-30).
+
+**Room (v7)** guarda la jornada en curso en una sola tabla `jornada` con lo necesario para reanudar y mostrar: `pantalla_actual`, `estado_sync`, `motivo_error_sync`, `path_foto_*` (archivo local), `ruta_foto_*` (ruta ya subida al bucket), `id_brigada` + nombre de la brigada, `sectores_ids_csv`, `sectores_csv`, `area_total_m2`, `nombre_lider`, `voluntarios_csv`, `total_participantes`, horas en milisegundos, kg y km en `Float`, motivos de omisión y coordenada inicial nullable. `jornada_sector` y `foto_jornada` existen solo en Supabase.
 
 > **Eliminado en v3:** tabla `usuario` (Room y Supabase), `CatalogoDao` de usuarios y su semilla.
-> **v4:** `brigada` → `brigada`; Room v4 y Supabase v4 se reconstruyeron desde cero (`supabase_reset_v4.sql`). Desde la v4, toda migración es explícita.
+> **v4:** Room v4 y Supabase v4 se reconstruyeron desde cero. **v5 / Room v7 (ISSUE-62):** también desde cero (`supabase_reset.sql`), por última vez: desde el piloto, toda migración es explícita.
 
 ---
 
@@ -293,22 +310,22 @@ erDiagram
 ### 5.1 Flujo de sincronización (por cada jornada `PENDIENTE_SYNC`)
 1. **Precondición:** el APK debe tener `SUPABASE_URL` y la clave pública configuradas. Si no las tiene, **no se marca nada** y se informa *"Este APK no tiene configuración de nube"*. Los builds *release* **fallan en la compilación** si faltan.
 2. **Fotos:** se sube cada foto existente a `evidencias-fotos/{id_registro}_{n}_{tipo}.jpg` **sin** `x-upsert`. Si Storage responde que el archivo ya existe (reintento), se considera éxito.
-3. **Datos:** una sola llamada `POST /rest/v1/rpc/sincronizar_jornada` con un JSON que incluye la cabecera, los participantes, las herramientas (con su estado final), el conteo de basura y las URLs de las fotos.
+3. **Datos:** una sola llamada `POST /rest/v1/rpc/sincronizar_jornada` con un JSON que incluye la cabecera, las 3 fotos (ruta en el bucket o motivo de omisión), los participantes, las herramientas (con su estado final) y el conteo de basura.
 4. **Resultado:** solo si la RPC responde OK (`INSERTADA` o `YA_EXISTIA`) la jornada pasa a `SINCRONIZADO` en Room. Cualquier error deja la jornada en `PENDIENTE_SYNC` para reintentar.
 
 ### 5.2 Función `sincronizar_jornada(p jsonb)`
 * `SECURITY DEFINER`, `search_path` fijo; la clave `anon` solo tiene `EXECUTE` sobre ella.
-* Ejecuta **todo en una transacción**: inserta `jornada`, `participante_jornada`, `herramienta_jornada`, `basura_recolectada` y actualiza `herramienta_catalogo.estado`.
+* Ejecuta **todo en una transacción**: inserta `jornada`, `jornada_sector`, `foto_jornada`, `participante_jornada`, `herramienta_jornada`, `basura_recolectada` y actualiza `herramienta_catalogo.estado`.
 * **Idempotente e inmutable:** si `id_registro` ya existe, no modifica nada y responde `YA_EXISTIA`. Una jornada sincronizada no se puede sobrescribir desde el APK.
-* **Valida** los datos: kg ≥ 0, cantidades ≥ 0, estados y destinos dentro de los valores permitidos, playa existente y sectores **de esa playa**, tipos de basura y QR existentes en los catálogos, al menos 1 líder y 1 voluntario, motivo en cada foto omitida, `sin_herramientas` ⇔ 0 herramientas.
+* **Valida** los datos: kg ≥ 0, cantidades ≥ 0, estados y destinos dentro de los valores permitidos, playa existente, brigada y sectores **de esa playa**, la ruta exacta de cada foto, caracteres permitidos en nombres, motivos y N° de guía (ISSUE-58/60), tipos de basura y QR existentes en los catálogos, al menos 1 líder y 1 voluntario, motivo en cada foto omitida, `sin_herramientas` ⇔ 0 herramientas.
 * **Topes (v4):** participantes ≤ 60, cantidad por residuo ≤ 5.000, sacos ≤ 100, kg ≤ 2.500, km ≤ 30, duración ≤ 12 h.
 * **Reloj (v4):** `fecha_jornada` entre hoy − 60 días y hoy + 1 (Chile); la hora de inicio no puede estar en el futuro y debe caer el mismo día de `fecha_jornada` o el siguiente.
 
 ### 5.3 Permisos (RLS activado en todas las tablas)
 | Recurso | `anon` (APK) | Clave secreta (Sheets / admin) |
 | :--- | :--- | :--- |
-| `playa_catalogo`, `sector_catalogo`, `herramienta_catalogo`, `tipo_basura_catalogo` | `SELECT` | Total |
-| `jornada`, `participante_jornada`, `herramienta_jornada`, `basura_recolectada` | Sin acceso directo | Total |
+| `playa_catalogo`, `brigada_catalogo`, `sector_catalogo`, `herramienta_catalogo`, `tipo_basura_catalogo` | `SELECT` | Total |
+| `jornada`, `jornada_sector`, `foto_jornada`, `participante_jornada`, `herramienta_jornada`, `basura_recolectada`, `vista_jornada` | Sin acceso directo | Total |
 | `rpc/sincronizar_jornada` | `EXECUTE` | — |
 | Bucket `evidencias-fotos` (público) | Lectura pública + **solo INSERT** (sin UPDATE ni DELETE) | Total |
 

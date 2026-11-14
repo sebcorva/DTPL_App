@@ -1,5 +1,6 @@
 package cl.logisticaverde.app.data.local.db
 
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
@@ -15,6 +16,14 @@ object CatalogoSeedData {
 
     val playas = listOf(
         PlayaCatalogoEntity(idPlaya = ID_PLAYA_GRANDE, nombrePlaya = "Playa Grande de Cartagena")
+    )
+
+    /** ISSUE-62: brigadas de cada playa (mismo seed que supabase_schema.sql). */
+    val brigadas = listOf(
+        BrigadaCatalogoEntity(idBrigada = "BRIGADA-01", idPlaya = ID_PLAYA_GRANDE, nombreBrigada = "Brigada A"),
+        BrigadaCatalogoEntity(idBrigada = "BRIGADA-02", idPlaya = ID_PLAYA_GRANDE, nombreBrigada = "Brigada B"),
+        BrigadaCatalogoEntity(idBrigada = "BRIGADA-03", idPlaya = ID_PLAYA_GRANDE, nombreBrigada = "Brigada C"),
+        BrigadaCatalogoEntity(idBrigada = "BRIGADA-04", idPlaya = ID_PLAYA_GRANDE, nombreBrigada = "Brigada D")
     )
 
     val sectoresPlayaGrande = listOf(

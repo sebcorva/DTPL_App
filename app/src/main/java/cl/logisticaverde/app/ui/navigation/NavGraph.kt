@@ -88,6 +88,7 @@ fun LogisticaVerdeNavHost(
     val flujoUiState by flujoViewModel.uiState.collectAsStateWithLifecycle()
     val participantesJornada by flujoViewModel.participantesJornada.collectAsStateWithLifecycle()
     val playas by flujoViewModel.playasCatalogo.collectAsStateWithLifecycle()
+    val brigadas by flujoViewModel.brigadasCatalogo.collectAsStateWithLifecycle()
     val sectores by flujoViewModel.sectoresCatalogo.collectAsStateWithLifecycle()
     val catalogoHerramientas by flujoViewModel.herramientasCatalogo.collectAsStateWithLifecycle()
     val herramientasJornada by flujoViewModel.herramientasJornada.collectAsStateWithLifecycle()
@@ -161,11 +162,11 @@ fun LogisticaVerdeNavHost(
                 )
             }
 
-            // PANTALLA 2: Líder de Brigada, Brigada A-D y Playa (Card 1) y Voluntarios (Card 2)
+            // PANTALLA 2: Líder, Playa y sus Brigadas (Card 1) y Voluntarios (Card 2)
             composable(AppDestinations.PANTALLA_2_EQUIPO) {
                 EquipoScreen(
                     uiState = flujoUiState,
-                    brigadas = flujoViewModel.brigadasDisponibles,
+                    brigadas = brigadas,
                     playas = playas,
                     onSelectBrigada = flujoViewModel::selectBrigada,
                     onSelectPlaya = flujoViewModel::selectPlaya,

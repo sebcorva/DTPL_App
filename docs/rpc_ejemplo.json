@@ -3,8 +3,8 @@
     "jornada": {
       "id_registro": "REG-20261030-TEST01",
       "fecha_jornada": "2026-10-30",
-      "brigada": "Brigada A",
       "id_playa": "PLAYA-01",
+      "id_brigada": "BRIGADA-01",
       "sectores_ids": ["SECTOR-01", "SECTOR-02"],
       "sin_herramientas": false,
       "hora_inicio_ms": 1793365200000,
@@ -12,12 +12,6 @@
       "latitud_inicial": -33.5394,
       "longitud_inicial": -71.6083,
       "km_recorridos": 1.8,
-      "url_foto_inicio": null,
-      "url_foto_limpio": null,
-      "url_foto_sacos": null,
-      "motivo_omision_inicio": "Prueba sin cámara",
-      "motivo_omision_limpio": "Prueba sin cámara",
-      "motivo_omision_sacos": "Prueba sin cámara",
       "cantidad_sacos": 3,
       "kg_basura_normal": 30.5,
       "kg_basura_reciclable": 12.0,
@@ -26,6 +20,11 @@
       "nro_guia_despacho": "GD-0001",
       "destino_basura_reciclable": "Entregado a Punto Limpio Municipal"
     },
+    "fotos": [
+      { "tipo": "inicio", "ruta": null, "motivo_omision": "Prueba sin cámara" },
+      { "tipo": "limpio", "ruta": null, "motivo_omision": "Prueba sin cámara" },
+      { "tipo": "sacos", "ruta": null, "motivo_omision": "Prueba sin cámara" }
+    ],
     "participantes": [
       { "nombre": "Ana Prueba", "rol": "LIDER" },
       { "nombre": "Luis Prueba", "rol": "VOLUNTARIO" }

@@ -103,7 +103,7 @@ class FakeJornadaDao : JornadaDao {
     override suspend fun updateCoordenadaInicialSiVacia(idRegistro: String, lat: Double, lng: Double) {
         jornadasFlow.update { current ->
             current.map {
-                if (it.idRegistro == idRegistro && it.latitudInicial == 0.0 && it.longitudInicial == 0.0) {
+                if (it.idRegistro == idRegistro && it.latitudInicial == null) {
                     it.copy(latitudInicial = lat, longitudInicial = lng)
                 } else {
                     it

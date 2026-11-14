@@ -139,7 +139,7 @@ fun PesajeResumenScreen(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     DatoResumen(
                         icono = Icons.Outlined.Person,
-                        etiqueta = "Líder · ${uiState.selectedBrigada}",
+                        etiqueta = "Líder · ${uiState.nombreBrigada}",
                         valor = uiState.nombreLider.ifBlank { "Sin asignar" },
                         modifier = Modifier.weight(1f)
                     )

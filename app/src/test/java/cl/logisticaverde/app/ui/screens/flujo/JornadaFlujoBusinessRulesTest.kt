@@ -47,11 +47,10 @@ class JornadaFlujoBusinessRulesTest {
     }
 
     @Test
-    fun `Regla Pantalla 2 - Solo existen Brigadas A-D y exige lider, minimo 1 voluntario y playa`() = runTest {
-        assertEquals(
-            listOf("Brigada A", "Brigada B", "Brigada C", "Brigada D"),
-            viewModel.brigadasDisponibles
-        )
+    fun `Regla Pantalla 2 - Exige lider, minimo 1 voluntario, playa y una brigada de esa playa`() = runTest {
+        val collector = backgroundScope.launch(testDispatcher) { viewModel.brigadasCatalogo.collect {} }
+        // ISSUE-62: sin playa elegida no hay brigadas
+        assertTrue(viewModel.brigadasCatalogo.value.isEmpty())
 
         var navigatedToP3 = false
 
@@ -72,10 +71,19 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.guardarPantalla2Equipo { navigatedToP3 = true }
         assertFalse(navigatedToP3)
 
-        // Con playa -> Crea la jornada y sus participantes, y avanza a Pantalla 3
-        viewModel.selectBrigada("Brigada C")
+        // Con playa pero sin brigada -> No avanza; aparecen las brigadas de esa playa
         viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
+        assertEquals(
+            listOf("Brigada A", "Brigada B", "Brigada C", "Brigada D"),
+            viewModel.brigadasCatalogo.value.map { it.nombreBrigada }
+        )
         viewModel.guardarPantalla2Equipo { navigatedToP3 = true }
+        assertFalse(navigatedToP3)
+
+        // Con brigada -> Crea la jornada y sus participantes, y avanza a Pantalla 3
+        viewModel.selectBrigada(CatalogoSeedData.brigadas.first { it.nombreBrigada == "Brigada C" })
+        viewModel.guardarPantalla2Equipo { navigatedToP3 = true }
+        collector.cancel()
 
         assertTrue(navigatedToP3)
         val idRegistro = viewModel.uiState.value.idRegistroActivo
@@ -87,6 +95,7 @@ class JornadaFlujoBusinessRulesTest {
         assertEquals(3, savedJornada.totalParticipantes)
         assertEquals(3, savedJornada.pantallaActual)
         assertEquals("Brigada C", savedJornada.brigada)
+        assertEquals("BRIGADA-03", savedJornada.idBrigada)
         assertEquals(CatalogoSeedData.ID_PLAYA_GRANDE, savedJornada.idPlaya)
         assertEquals("Playa Grande de Cartagena", savedJornada.nombrePlaya)
 
@@ -566,8 +575,8 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.finalizarLimpieza {}
         val jornada = fakeJornadaDao.getJornadaById(idRegistro)!!
         assertEquals(1.25f, jornada.kmRecorridos)
-        assertEquals(-33.53, jornada.latitudInicial, 0.0)
-        assertEquals(-71.60, jornada.longitudInicial, 0.0)
+        assertEquals(-33.53, jornada.latitudInicial!!, 0.0)
+        assertEquals(-71.60, jornada.longitudInicial!!, 0.0)
     }
 
     // ------------------------------------------------------------------
@@ -815,6 +824,7 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.onNombreLiderChange("Vanessa")
         viewModel.agregarVoluntario("Diego")
         viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
+        viewModel.selectBrigada(CatalogoSeedData.brigadas.first())
         viewModel.guardarPantalla2Equipo {}
     }
 
@@ -823,6 +833,7 @@ class JornadaFlujoBusinessRulesTest {
         viewModel.onNombreLiderChange("Vanessa")
         assertTrue(viewModel.agregarVoluntario("Diego"))
         viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
+        viewModel.selectBrigada(CatalogoSeedData.brigadas.first())
         viewModel.guardarPantalla2Equipo { }
         val idEnCurso = viewModel.uiState.value.idRegistroActivo!!
         // Jornada ya cerrada (pendiente de sync): no debe tocarse

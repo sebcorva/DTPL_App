@@ -2,6 +2,7 @@ package cl.logisticaverde.app.fakes
 
 import cl.logisticaverde.app.data.local.db.CatalogoDao
 import cl.logisticaverde.app.data.local.db.CatalogoSeedData
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.update
 class FakeCatalogoDao : CatalogoDao {
 
     private val playasFlow = MutableStateFlow<List<PlayaCatalogoEntity>>(CatalogoSeedData.playas)
+    private val brigadasFlow = MutableStateFlow<List<BrigadaCatalogoEntity>>(CatalogoSeedData.brigadas)
     private val sectoresFlow = MutableStateFlow<List<SectorCatalogoEntity>>(CatalogoSeedData.sectoresPlayaGrande)
     private val herramientasFlow = MutableStateFlow<List<HerramientaCatalogoEntity>>(CatalogoSeedData.herramientasQr)
     private val tiposBasuraFlow = MutableStateFlow<List<TipoBasuraCatalogoEntity>>(CatalogoSeedData.tiposBasura)
@@ -27,6 +29,15 @@ class FakeCatalogoDao : CatalogoDao {
 
     override suspend fun deletePlayasExcepto(idsVigentes: List<String>) {
         playasFlow.update { lista -> lista.filter { it.idPlaya in idsVigentes } }
+    }
+
+    override fun observeBrigadas(): Flow<List<BrigadaCatalogoEntity>> = brigadasFlow
+
+    override suspend fun getBrigadasList(): List<BrigadaCatalogoEntity> = brigadasFlow.value
+
+    override suspend fun upsertBrigadas(brigadas: List<BrigadaCatalogoEntity>) {
+        val nuevas = brigadas.associateBy { it.idBrigada }
+        brigadasFlow.update { lista -> lista.filterNot { it.idBrigada in nuevas } + brigadas }
     }
 
     override fun observeSectores(): Flow<List<SectorCatalogoEntity>> = sectoresFlow

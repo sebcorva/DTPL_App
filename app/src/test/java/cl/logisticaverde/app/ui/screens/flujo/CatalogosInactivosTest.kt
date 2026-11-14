@@ -50,6 +50,7 @@ class CatalogosInactivosTest {
         viewModel.onNombreLiderChange("Vanessa")
         viewModel.agregarVoluntario("Diego")
         viewModel.selectPlaya(CatalogoSeedData.ID_PLAYA_GRANDE)
+        viewModel.selectBrigada(CatalogoSeedData.brigadas.first())
         viewModel.guardarPantalla2Equipo {}
     }
 

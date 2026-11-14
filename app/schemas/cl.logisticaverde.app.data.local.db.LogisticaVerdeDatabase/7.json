@@ -1,0 +1,717 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 7,
+    "identityHash": "bb3c922a3726bbbf1e065f900ca94fe0",
+    "entities": [
+      {
+        "tableName": "playa_catalogo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_playa` TEXT NOT NULL, `nombre_playa` TEXT NOT NULL, `is_activo` INTEGER, PRIMARY KEY(`id_playa`))",
+        "fields": [
+          {
+            "fieldPath": "idPlaya",
+            "columnName": "id_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombrePlaya",
+            "columnName": "nombre_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "is_activo",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_playa"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "brigada_catalogo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_brigada` TEXT NOT NULL, `id_playa` TEXT NOT NULL, `nombre_brigada` TEXT NOT NULL, `is_activo` INTEGER, PRIMARY KEY(`id_brigada`))",
+        "fields": [
+          {
+            "fieldPath": "idBrigada",
+            "columnName": "id_brigada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idPlaya",
+            "columnName": "id_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreBrigada",
+            "columnName": "nombre_brigada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "is_activo",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_brigada"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_brigada_catalogo_id_playa",
+            "unique": false,
+            "columnNames": [
+              "id_playa"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_brigada_catalogo_id_playa` ON `${TABLE_NAME}` (`id_playa`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "sector_catalogo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_sector` TEXT NOT NULL, `id_playa` TEXT NOT NULL, `nombre_sector` TEXT NOT NULL, `area_m2` INTEGER NOT NULL, `is_activo` INTEGER, PRIMARY KEY(`id_sector`))",
+        "fields": [
+          {
+            "fieldPath": "idSector",
+            "columnName": "id_sector",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idPlaya",
+            "columnName": "id_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreSector",
+            "columnName": "nombre_sector",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areaM2",
+            "columnName": "area_m2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "is_activo",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_sector"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_sector_catalogo_id_playa",
+            "unique": false,
+            "columnNames": [
+              "id_playa"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_sector_catalogo_id_playa` ON `${TABLE_NAME}` (`id_playa`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "herramienta_catalogo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`qr_codigo` TEXT NOT NULL, `nombre_herramienta` TEXT NOT NULL, `estado` TEXT NOT NULL, `is_activo` INTEGER, PRIMARY KEY(`qr_codigo`))",
+        "fields": [
+          {
+            "fieldPath": "qrCodigo",
+            "columnName": "qr_codigo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreHerramienta",
+            "columnName": "nombre_herramienta",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "is_activo",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "qr_codigo"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "tipo_basura_catalogo",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_tipo_basura` TEXT NOT NULL, `nombre_visible` TEXT NOT NULL, `categoria_origen` TEXT NOT NULL, `is_activo` INTEGER, PRIMARY KEY(`id_tipo_basura`))",
+        "fields": [
+          {
+            "fieldPath": "idTipoBasura",
+            "columnName": "id_tipo_basura",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreVisible",
+            "columnName": "nombre_visible",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoriaOrigen",
+            "columnName": "categoria_origen",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activo",
+            "columnName": "is_activo",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_tipo_basura"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "jornada",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_registro` TEXT NOT NULL, `pantalla_actual` INTEGER NOT NULL, `id_brigada` TEXT NOT NULL, `brigada` TEXT NOT NULL, `fecha_jornada` TEXT NOT NULL, `id_playa` TEXT NOT NULL, `nombre_playa` TEXT NOT NULL, `nombre_lider` TEXT NOT NULL, `voluntarios_csv` TEXT NOT NULL, `total_participantes` INTEGER NOT NULL, `sectores_ids_csv` TEXT NOT NULL, `sectores_csv` TEXT NOT NULL, `area_total_m2` INTEGER NOT NULL, `hora_inicio_ms` INTEGER NOT NULL, `hora_fin_ms` INTEGER NOT NULL, `latitud_inicial` REAL, `longitud_inicial` REAL, `km_recorridos` REAL NOT NULL, `sin_herramientas` INTEGER NOT NULL, `path_foto_inicio` TEXT NOT NULL, `path_foto_limpio` TEXT NOT NULL, `path_foto_sacos` TEXT NOT NULL, `ruta_foto_inicio` TEXT, `ruta_foto_limpio` TEXT, `ruta_foto_sacos` TEXT, `motivo_omision_inicio` TEXT, `motivo_omision_limpio` TEXT, `motivo_omision_sacos` TEXT, `cantidad_sacos` INTEGER NOT NULL, `kg_basura_normal` REAL NOT NULL, `kg_basura_reciclable` REAL NOT NULL, `kg_totales` REAL NOT NULL, `encargado_pesaje` TEXT NOT NULL, `destino_basura_normal` TEXT NOT NULL, `nro_guia_despacho` TEXT, `destino_basura_reciclable` TEXT NOT NULL, `estado_sync` TEXT NOT NULL, `motivo_error_sync` TEXT, PRIMARY KEY(`id_registro`))",
+        "fields": [
+          {
+            "fieldPath": "idRegistro",
+            "columnName": "id_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pantallaActual",
+            "columnName": "pantalla_actual",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idBrigada",
+            "columnName": "id_brigada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "brigada",
+            "columnName": "brigada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaJornada",
+            "columnName": "fecha_jornada",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idPlaya",
+            "columnName": "id_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombrePlaya",
+            "columnName": "nombre_playa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreLider",
+            "columnName": "nombre_lider",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voluntariosCsv",
+            "columnName": "voluntarios_csv",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalParticipantes",
+            "columnName": "total_participantes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectoresIdsCsv",
+            "columnName": "sectores_ids_csv",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sectoresCsv",
+            "columnName": "sectores_csv",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "areaTotalM2",
+            "columnName": "area_total_m2",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horaInicioMs",
+            "columnName": "hora_inicio_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "horaFinMs",
+            "columnName": "hora_fin_ms",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitudInicial",
+            "columnName": "latitud_inicial",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "longitudInicial",
+            "columnName": "longitud_inicial",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "kmRecorridos",
+            "columnName": "km_recorridos",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sinHerramientas",
+            "columnName": "sin_herramientas",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pathFotoInicio",
+            "columnName": "path_foto_inicio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pathFotoLimpio",
+            "columnName": "path_foto_limpio",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pathFotoSacos",
+            "columnName": "path_foto_sacos",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rutaFotoInicio",
+            "columnName": "ruta_foto_inicio",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rutaFotoLimpio",
+            "columnName": "ruta_foto_limpio",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rutaFotoSacos",
+            "columnName": "ruta_foto_sacos",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "motivoOmisionInicio",
+            "columnName": "motivo_omision_inicio",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "motivoOmisionLimpio",
+            "columnName": "motivo_omision_limpio",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "motivoOmisionSacos",
+            "columnName": "motivo_omision_sacos",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cantidadSacos",
+            "columnName": "cantidad_sacos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kgBasuraNormal",
+            "columnName": "kg_basura_normal",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kgBasuraReciclable",
+            "columnName": "kg_basura_reciclable",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kgTotales",
+            "columnName": "kg_totales",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "encargadoPesaje",
+            "columnName": "encargado_pesaje",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "destinoBasuraNormal",
+            "columnName": "destino_basura_normal",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nroGuiaDespacho",
+            "columnName": "nro_guia_despacho",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "destinoBasuraReciclable",
+            "columnName": "destino_basura_reciclable",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estadoSync",
+            "columnName": "estado_sync",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivoErrorSync",
+            "columnName": "motivo_error_sync",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_registro"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_jornada_estado_sync",
+            "unique": false,
+            "columnNames": [
+              "estado_sync"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jornada_estado_sync` ON `${TABLE_NAME}` (`estado_sync`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "participante_jornada",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_registro` TEXT NOT NULL, `nombre` TEXT NOT NULL, `nombre_normalizado` TEXT NOT NULL, `rol` TEXT NOT NULL, FOREIGN KEY(`id_registro`) REFERENCES `jornada`(`id_registro`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idRegistro",
+            "columnName": "id_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombre",
+            "columnName": "nombre",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreNormalizado",
+            "columnName": "nombre_normalizado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rol",
+            "columnName": "rol",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_participante_jornada_id_registro_nombre_normalizado",
+            "unique": true,
+            "columnNames": [
+              "id_registro",
+              "nombre_normalizado"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_participante_jornada_id_registro_nombre_normalizado` ON `${TABLE_NAME}` (`id_registro`, `nombre_normalizado`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "jornada",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_registro"
+            ],
+            "referencedColumns": [
+              "id_registro"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "herramienta_jornada",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `id_registro` TEXT NOT NULL, `qr_codigo` TEXT NOT NULL, `nombre_herramienta` TEXT NOT NULL, `estado_final` TEXT NOT NULL, FOREIGN KEY(`id_registro`) REFERENCES `jornada`(`id_registro`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`qr_codigo`) REFERENCES `herramienta_catalogo`(`qr_codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idRegistro",
+            "columnName": "id_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "qrCodigo",
+            "columnName": "qr_codigo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreHerramienta",
+            "columnName": "nombre_herramienta",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estadoFinal",
+            "columnName": "estado_final",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_herramienta_jornada_id_registro_qr_codigo",
+            "unique": true,
+            "columnNames": [
+              "id_registro",
+              "qr_codigo"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_herramienta_jornada_id_registro_qr_codigo` ON `${TABLE_NAME}` (`id_registro`, `qr_codigo`)"
+          },
+          {
+            "name": "index_herramienta_jornada_qr_codigo",
+            "unique": false,
+            "columnNames": [
+              "qr_codigo"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_herramienta_jornada_qr_codigo` ON `${TABLE_NAME}` (`qr_codigo`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "jornada",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_registro"
+            ],
+            "referencedColumns": [
+              "id_registro"
+            ]
+          },
+          {
+            "table": "herramienta_catalogo",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "qr_codigo"
+            ],
+            "referencedColumns": [
+              "qr_codigo"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "basura_recolectada",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id_registro` TEXT NOT NULL, `id_tipo_basura` TEXT NOT NULL, `nombre_visible` TEXT NOT NULL, `categoria_origen` TEXT NOT NULL, `cantidad` INTEGER NOT NULL, PRIMARY KEY(`id_registro`, `id_tipo_basura`), FOREIGN KEY(`id_registro`) REFERENCES `jornada`(`id_registro`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`id_tipo_basura`) REFERENCES `tipo_basura_catalogo`(`id_tipo_basura`) ON UPDATE NO ACTION ON DELETE RESTRICT )",
+        "fields": [
+          {
+            "fieldPath": "idRegistro",
+            "columnName": "id_registro",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "idTipoBasura",
+            "columnName": "id_tipo_basura",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nombreVisible",
+            "columnName": "nombre_visible",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoriaOrigen",
+            "columnName": "categoria_origen",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cantidad",
+            "columnName": "cantidad",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id_registro",
+            "id_tipo_basura"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_basura_recolectada_id_registro",
+            "unique": false,
+            "columnNames": [
+              "id_registro"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_basura_recolectada_id_registro` ON `${TABLE_NAME}` (`id_registro`)"
+          },
+          {
+            "name": "index_basura_recolectada_id_tipo_basura",
+            "unique": false,
+            "columnNames": [
+              "id_tipo_basura"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_basura_recolectada_id_tipo_basura` ON `${TABLE_NAME}` (`id_tipo_basura`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "jornada",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_registro"
+            ],
+            "referencedColumns": [
+              "id_registro"
+            ]
+          },
+          {
+            "table": "tipo_basura_catalogo",
+            "onDelete": "RESTRICT",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "id_tipo_basura"
+            ],
+            "referencedColumns": [
+              "id_tipo_basura"
+            ]
+          }
+        ]
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bb3c922a3726bbbf1e065f900ca94fe0')"
+    ]
+  }
+}

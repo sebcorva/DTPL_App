@@ -1,6 +1,7 @@
 package cl.logisticaverde.app.domain.reglas
 
 import cl.logisticaverde.app.data.local.entity.BasuraRecolectadaEntity
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaJornadaEntity
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
@@ -17,7 +18,6 @@ import java.time.LocalDate
  */
 object ValidadorJornada {
 
-    val BRIGADAS = listOf("Brigada A", "Brigada B", "Brigada C", "Brigada D")
     private const val DIAS_ATRAS_PERMITIDOS = 60L
     private const val UN_DIA_MS = 24L * 60 * 60 * 1000
 
@@ -28,6 +28,7 @@ object ValidadorJornada {
         basura: List<BasuraRecolectadaEntity>,
         sectoresCatalogo: List<SectorCatalogoEntity>,
         herramientasCatalogo: List<HerramientaCatalogoEntity>,
+        brigadasCatalogo: List<BrigadaCatalogoEntity>,
         ahoraMs: Long
     ): List<String> {
         val problemas = mutableListOf<String>()
@@ -37,7 +38,6 @@ object ValidadorJornada {
 
         // ---------- Cabecera ----------
         regla(jornada.idRegistro.matches(Regex("^REG-[0-9]{8}-[A-Z0-9]{4,12}$")), "Identificador de jornada inválido")
-        regla(jornada.brigada in BRIGADAS, "Brigada inválida")
 
         val hoy = FechaJornada.hoy(ahoraMs)
         val fecha = runCatching { LocalDate.parse(jornada.fechaJornada) }.getOrNull()
@@ -47,6 +47,11 @@ object ValidadorJornada {
         )
 
         regla(jornada.idPlaya.isNotBlank(), "Falta la playa")
+        // ISSUE-62: la brigada debe ser de la playa elegida
+        regla(
+            brigadasCatalogo.any { it.idBrigada == jornada.idBrigada && it.idPlaya == jornada.idPlaya },
+            "Brigada inválida o de otra playa"
+        )
         val sectores = jornada.sectoresIdsCsv.split(",").map { it.trim() }.filter { it.isNotEmpty() }.distinct()
         regla(sectores.isNotEmpty(), "Falta al menos 1 sector")
         val sectoresDeLaPlaya = sectoresCatalogo.filter { it.idPlaya == jornada.idPlaya }.map { it.idSector }.toSet()
@@ -67,7 +72,13 @@ object ValidadorJornada {
                 "La hora de inicio no corresponde a la fecha de la jornada"
             )
         }
-        regla(jornada.latitudInicial in -90.0..90.0 && jornada.longitudInicial in -180.0..180.0, "Coordenadas inválidas")
+        // ISSUE-62: sin lectura de GPS, ambas null
+        val lat = jornada.latitudInicial
+        val lng = jornada.longitudInicial
+        regla(
+            (lat == null && lng == null) || (lat != null && lng != null && lat in -90.0..90.0 && lng in -180.0..180.0),
+            "Coordenadas inválidas"
+        )
         regla(jornada.kmRecorridos in 0f..TopesJornada.MAX_KM_RECORRIDOS, "Kilómetros fuera de rango (0 a 30)")
 
         // ---------- Pesaje ----------
@@ -105,12 +116,12 @@ object ValidadorJornada {
 
         // ---------- Fotos: tomada, o con motivo ----------
         listOf(
-            Triple(jornada.pathFotoInicio, jornada.urlFotoInicio, jornada.motivoOmisionInicio) to "inicio",
-            Triple(jornada.pathFotoLimpio, jornada.urlFotoLimpio, jornada.motivoOmisionLimpio) to "sector limpio",
-            Triple(jornada.pathFotoSacos, jornada.urlFotoSacos, jornada.motivoOmisionSacos) to "sacos"
+            Triple(jornada.pathFotoInicio, jornada.rutaFotoInicio, jornada.motivoOmisionInicio) to "inicio",
+            Triple(jornada.pathFotoLimpio, jornada.rutaFotoLimpio, jornada.motivoOmisionLimpio) to "sector limpio",
+            Triple(jornada.pathFotoSacos, jornada.rutaFotoSacos, jornada.motivoOmisionSacos) to "sacos"
         ).forEach { (foto, nombre) ->
-            val (path, url, motivo) = foto
-            if (path.isBlank() && url.isNullOrBlank()) {
+            val (path, ruta, motivo) = foto
+            if (path.isBlank() && ruta.isNullOrBlank()) {
                 val m = normalizar(motivo.orEmpty())
                 regla(m.isNotEmpty(), "Falta el motivo para omitir la foto de $nombre")
                 if (m.isNotEmpty()) {

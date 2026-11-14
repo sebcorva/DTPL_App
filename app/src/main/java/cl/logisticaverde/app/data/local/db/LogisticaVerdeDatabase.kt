@@ -7,6 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import cl.logisticaverde.app.data.local.entity.BasuraRecolectadaEntity
+import cl.logisticaverde.app.data.local.entity.BrigadaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.HerramientaJornadaEntity
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
@@ -27,14 +28,18 @@ import kotlinx.coroutines.launch
  * - v4 → v5 también es destructiva, por decisión del 31-10-2026 (ISSUE-42: `motivo_error_sync`;
  *   aún no hay datos reales).
  * - v5 → v6 también es destructiva, por decisión del 08-11-2026 (ISSUE-43: columna `is_activo` en los
- *   4 catálogos; solo había datos de prueba, sin datos sensibles). Es la ÚLTIMA vez: el piloto parte con la v6.
- * - Desde la v6, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
+ *   4 catálogos; solo había datos de prueba, sin datos sensibles).
+ * - v6 → v7 también es destructiva, por decisión del 13-11-2026 (ISSUE-62: catálogo de brigadas por playa,
+ *   coordenada inicial nullable y ruta de las fotos en vez de URL; sin datos reales). Es la ÚLTIMA vez:
+ *   el piloto parte con la v7.
+ * - Desde la v7, cualquier cambio de esquema exige subir `version`, agregar una `Migration`
  *   explícita en [MIGRACIONES] y un test con `MigrationTestHelper` contra `app/schemas/`.
  *   Nunca volver a usar `fallbackToDestructiveMigration()`: borraría jornadas sin sincronizar.
  */
 @Database(
     entities = [
         PlayaCatalogoEntity::class,
+        BrigadaCatalogoEntity::class,
         SectorCatalogoEntity::class,
         HerramientaCatalogoEntity::class,
         TipoBasuraCatalogoEntity::class,
@@ -43,7 +48,7 @@ import kotlinx.coroutines.launch
         HerramientaJornadaEntity::class,
         BasuraRecolectadaEntity::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = true
 )
 abstract class LogisticaVerdeDatabase : RoomDatabase() {
@@ -55,7 +60,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: LogisticaVerdeDatabase? = null
 
-        // Migraciones explícitas a partir de la v6 (ej. MIGRATION_6_7)
+        // Migraciones explícitas a partir de la v7 (ej. MIGRATION_7_8)
         private val MIGRACIONES = emptyArray<Migration>()
 
         private val dbScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -79,7 +84,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
                         }
                     })
                     .addMigrations(*MIGRACIONES)
-                    .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5)
+                    .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6)
                     .build()
 
                 INSTANCE = instance
@@ -96,6 +101,7 @@ abstract class LogisticaVerdeDatabase : RoomDatabase() {
 
         private suspend fun seedInitialCatalogs(catalogoDao: CatalogoDao) {
             catalogoDao.upsertPlayas(CatalogoSeedData.playas)
+            catalogoDao.upsertBrigadas(CatalogoSeedData.brigadas)
             catalogoDao.upsertSectores(CatalogoSeedData.sectoresPlayaGrande)
             catalogoDao.upsertHerramientas(CatalogoSeedData.herramientasQr)
             catalogoDao.upsertTiposBasura(CatalogoSeedData.tiposBasura)

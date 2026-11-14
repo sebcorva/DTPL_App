@@ -12,7 +12,7 @@
 * **Transecto:** área estandarizada de muestreo. En el piloto: **8.000 m²** (200 m × 40 m), dividida en 4 sectores.
 * **Playa:** lugar de la jornada, elegido en la Pantalla 2 desde `playa_catalogo`. Cada playa tiene sus sectores con m² definidos de antemano.
 * **Sector:** subdivisión de una playa (`SECTOR-01`..`04` en Playa Grande, 2.000 m² cada uno) que el líder marca en la Pantalla 3. Varias brigadas pueden elegir el mismo sector.
-* **Brigada de limpieza (A, B, C, D):** 1 líder de brigada (lleva el teléfono) + al menos 1 voluntario, máximo 60 integrantes. *(Antes "cuadrilla".)*
+* **Brigada de limpieza:** 1 líder de brigada (lleva el teléfono) + al menos 1 voluntario, máximo 60 integrantes. Cada playa tiene sus brigadas (catálogo `brigada_catalogo`; Playa Grande: A, B, C y D). *(Antes "cuadrilla".)*
 * **Fecha de la jornada (`fecha_jornada`):** día en que se realiza la jornada (hora de Chile), registrado al crearla. Distinta de `fecha_sincronizacion`.
 * **Participante:** cualquier integrante de una jornada (líder o voluntario). Se registra **solo su nombre**, escrito a mano en la Pantalla 2, y existe solo dentro de esa jornada. No hay padrón de usuarios.
 * **Encargado de pesaje:** persona que opera la única pesa digital en el punto de acopio y dicta los kilos al líder (Pantalla 8). Puede ser un participante u otra persona. *(Reemplaza a la antigua "Cuadrilla E".)*

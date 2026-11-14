@@ -31,14 +31,6 @@ object SupabaseClient {
             !SUPABASE_KEY.contains("PEGA_AQUI")
     }
 
-    /**
-     * Construye la URL pública de una foto alojada en el bucket público `evidencias-fotos` de Supabase Storage.
-     */
-    fun buildPublicPhotoUrl(fileName: String): String {
-        val baseUrl = SUPABASE_URL.trimEnd('/')
-        return "$baseUrl/storage/v1/object/public/$STORAGE_BUCKET_EVIDENCIAS/$fileName"
-    }
-
     private val authInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
         val requestBuilder = originalRequest.newBuilder()

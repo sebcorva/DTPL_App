@@ -228,9 +228,9 @@
   - [x] Leer `SUPABASE_URL` y `SUPABASE_SECRET_KEY` desde Script Properties (nunca en el código ni en el repositorio).
   - [x] `crearEstructura()`: crea las pestañas Inicio, KPI, Jornadas, Residuos, Herramientas y Listas (oculta) con encabezados, formatos, listas desplegables y fórmulas del KPI; se puede volver a ejecutar sin duplicar nada.
   - [x] `sincronizar()`: lee las vistas de ISSUE-30 y los catálogos (playas y brigadas activas → Listas) y escribe cada una en su pestaña desde la fila 6, **borrando solo el rango de datos** (no `clearContents()` de la hoja).
-  - [x] Paginación con el encabezado `Range` (PostgREST entrega máx. 1.000 filas por consulta).
+  - [x] Paginación con `limit`/`offset` (PostgREST entrega máx. 1.000 filas por consulta).
   - [x] Fechas y horas como valores de fecha reales (hora de Chile), no texto; números como números.
-  - [x] Anteponer `'` solo a los textos libres (nombres, motivos, N° de guía) antes de `setValues()` (ISSUE-58); nunca a fechas ni números.
+  - [x] Anteponer `'` a todo texto que viene de Supabase antes de `setValues()` (ISSUE-58); nunca a fechas ni números.
   - [x] Fotos: 3 columnas (Inicio, Limpio, Sacos) con "Ver foto" como texto con vínculo (no fórmula `HYPERLINK`: en una planilla en español quedaba como texto), URL armada con la ruta (`…/storage/v1/object/public/evidencias-fotos/<ruta>`), u `Omitida: <motivo>`.
   - [ ] Menú "Logística Verde → Sincronizar" y disparador diario, que además es el *keep-alive*.
   - [ ] Prueba: con datos de prueba, los KPI de la planilla coinciden con la P10 de cada jornada.

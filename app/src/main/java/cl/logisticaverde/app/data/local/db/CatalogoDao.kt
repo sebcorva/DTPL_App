@@ -12,6 +12,11 @@ import cl.logisticaverde.app.data.local.entity.TipoBasuraCatalogoEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
+/**
+ * ISSUE-63: política única para los 5 catálogos. Al descargarlos de Supabase, lo que ya no viene
+ * del servidor se marca inactivo en el teléfono (nunca se borra: las jornadas locales lo referencian);
+ * si vuelve a venir, el upsert lo reactiva con el `is_activo` del servidor.
+ */
 interface CatalogoDao {
 
     // --- PLAYAS (ISSUE-32) ---
@@ -21,14 +26,13 @@ interface CatalogoDao {
     @Upsert
     suspend fun upsertPlayas(playas: List<PlayaCatalogoEntity>)
 
-    @Query("DELETE FROM playa_catalogo WHERE id_playa NOT IN (:idsVigentes)")
-    suspend fun deletePlayasExcepto(idsVigentes: List<String>)
+    @Query("UPDATE playa_catalogo SET is_activo = 0 WHERE id_playa NOT IN (:idsVigentes)")
+    suspend fun desactivarPlayasExcepto(idsVigentes: List<String>)
 
-    /** ISSUE-43: deja las playas locales idénticas a las del servidor (borra las que ya no vienen). */
     @Transaction
-    suspend fun reemplazarPlayas(playas: List<PlayaCatalogoEntity>) {
-        deletePlayasExcepto(playas.map { it.idPlaya })
-        upsertPlayas(playas)
+    suspend fun sincronizarPlayas(remotas: List<PlayaCatalogoEntity>) {
+        desactivarPlayasExcepto(remotas.map { it.idPlaya })
+        upsertPlayas(remotas)
     }
 
     // --- BRIGADAS (ISSUE-62: cada una pertenece a una playa) ---
@@ -41,6 +45,15 @@ interface CatalogoDao {
     @Upsert
     suspend fun upsertBrigadas(brigadas: List<BrigadaCatalogoEntity>)
 
+    @Query("UPDATE brigada_catalogo SET is_activo = 0 WHERE id_brigada NOT IN (:idsVigentes)")
+    suspend fun desactivarBrigadasExcepto(idsVigentes: List<String>)
+
+    @Transaction
+    suspend fun sincronizarBrigadas(remotas: List<BrigadaCatalogoEntity>) {
+        desactivarBrigadasExcepto(remotas.map { it.idBrigada })
+        upsertBrigadas(remotas)
+    }
+
     // --- SECTORES (cada uno pertenece a una playa) ---
     @Query("SELECT * FROM sector_catalogo ORDER BY id_sector ASC")
     fun observeSectores(): Flow<List<SectorCatalogoEntity>>
@@ -51,14 +64,13 @@ interface CatalogoDao {
     @Upsert
     suspend fun upsertSectores(sectores: List<SectorCatalogoEntity>)
 
-    @Query("DELETE FROM sector_catalogo WHERE id_sector NOT IN (:idsVigentes)")
-    suspend fun deleteSectoresExcepto(idsVigentes: List<String>)
+    @Query("UPDATE sector_catalogo SET is_activo = 0 WHERE id_sector NOT IN (:idsVigentes)")
+    suspend fun desactivarSectoresExcepto(idsVigentes: List<String>)
 
-    /** ISSUE-43: deja los sectores locales idénticos a los del servidor (borra los que ya no vienen). */
     @Transaction
-    suspend fun reemplazarSectores(sectores: List<SectorCatalogoEntity>) {
-        deleteSectoresExcepto(sectores.map { it.idSector })
-        upsertSectores(sectores)
+    suspend fun sincronizarSectores(remotos: List<SectorCatalogoEntity>) {
+        desactivarSectoresExcepto(remotos.map { it.idSector })
+        upsertSectores(remotos)
     }
 
     // --- HERRAMIENTAS QR ---
@@ -74,6 +86,15 @@ interface CatalogoDao {
     @Upsert
     suspend fun upsertHerramientas(herramientas: List<HerramientaCatalogoEntity>)
 
+    @Query("UPDATE herramienta_catalogo SET is_activo = 0 WHERE qr_codigo NOT IN (:qrVigentes)")
+    suspend fun desactivarHerramientasExcepto(qrVigentes: List<String>)
+
+    @Transaction
+    suspend fun sincronizarHerramientas(remotas: List<HerramientaCatalogoEntity>) {
+        desactivarHerramientasExcepto(remotas.map { it.qrCodigo })
+        upsertHerramientas(remotas)
+    }
+
     // --- TIPOS DE BASURA (Con categoria_origen por defecto) ---
     @Query("SELECT * FROM tipo_basura_catalogo ORDER BY id_tipo_basura ASC")
     fun observeTiposBasura(): Flow<List<TipoBasuraCatalogoEntity>>
@@ -83,4 +104,13 @@ interface CatalogoDao {
 
     @Upsert
     suspend fun upsertTiposBasura(tipos: List<TipoBasuraCatalogoEntity>)
+
+    @Query("UPDATE tipo_basura_catalogo SET is_activo = 0 WHERE id_tipo_basura NOT IN (:idsVigentes)")
+    suspend fun desactivarTiposBasuraExcepto(idsVigentes: List<String>)
+
+    @Transaction
+    suspend fun sincronizarTiposBasura(remotos: List<TipoBasuraCatalogoEntity>) {
+        desactivarTiposBasuraExcepto(remotos.map { it.idTipoBasura })
+        upsertTiposBasura(remotos)
+    }
 }

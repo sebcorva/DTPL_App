@@ -27,8 +27,8 @@ class FakeCatalogoDao : CatalogoDao {
         playasFlow.update { lista -> lista.filterNot { it.idPlaya in nuevas } + playas }
     }
 
-    override suspend fun deletePlayasExcepto(idsVigentes: List<String>) {
-        playasFlow.update { lista -> lista.filter { it.idPlaya in idsVigentes } }
+    override suspend fun desactivarPlayasExcepto(idsVigentes: List<String>) {
+        playasFlow.update { lista -> lista.map { if (it.idPlaya in idsVigentes) it else it.copy(activo = false) } }
     }
 
     override fun observeBrigadas(): Flow<List<BrigadaCatalogoEntity>> = brigadasFlow
@@ -49,8 +49,12 @@ class FakeCatalogoDao : CatalogoDao {
         sectoresFlow.update { lista -> (lista.filterNot { it.idSector in nuevos } + sectores).sortedBy { it.idSector } }
     }
 
-    override suspend fun deleteSectoresExcepto(idsVigentes: List<String>) {
-        sectoresFlow.update { lista -> lista.filter { it.idSector in idsVigentes } }
+    override suspend fun desactivarSectoresExcepto(idsVigentes: List<String>) {
+        sectoresFlow.update { lista -> lista.map { if (it.idSector in idsVigentes) it else it.copy(activo = false) } }
+    }
+
+    override suspend fun desactivarBrigadasExcepto(idsVigentes: List<String>) {
+        brigadasFlow.update { lista -> lista.map { if (it.idBrigada in idsVigentes) it else it.copy(activo = false) } }
     }
 
     override fun observeHerramientasCatalogo(): Flow<List<HerramientaCatalogoEntity>> = herramientasFlow
@@ -66,8 +70,14 @@ class FakeCatalogoDao : CatalogoDao {
         }
     }
 
+    // Igual que @Upsert de Room: agrega o actualiza, no borra
     override suspend fun upsertHerramientas(herramientas: List<HerramientaCatalogoEntity>) {
-        herramientasFlow.value = herramientas
+        val nuevas = herramientas.associateBy { it.qrCodigo }
+        herramientasFlow.update { lista -> lista.filterNot { it.qrCodigo in nuevas } + herramientas }
+    }
+
+    override suspend fun desactivarHerramientasExcepto(qrVigentes: List<String>) {
+        herramientasFlow.update { lista -> lista.map { if (it.qrCodigo in qrVigentes) it else it.copy(activo = false) } }
     }
 
     override fun observeTiposBasura(): Flow<List<TipoBasuraCatalogoEntity>> = tiposBasuraFlow
@@ -75,6 +85,11 @@ class FakeCatalogoDao : CatalogoDao {
     override suspend fun getTiposBasuraList(): List<TipoBasuraCatalogoEntity> = tiposBasuraFlow.value
 
     override suspend fun upsertTiposBasura(tipos: List<TipoBasuraCatalogoEntity>) {
-        tiposBasuraFlow.value = tipos
+        val nuevos = tipos.associateBy { it.idTipoBasura }
+        tiposBasuraFlow.update { lista -> lista.filterNot { it.idTipoBasura in nuevos } + tipos }
+    }
+
+    override suspend fun desactivarTiposBasuraExcepto(idsVigentes: List<String>) {
+        tiposBasuraFlow.update { lista -> lista.map { if (it.idTipoBasura in idsVigentes) it else it.copy(activo = false) } }
     }
 }

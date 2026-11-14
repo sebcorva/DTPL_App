@@ -19,6 +19,7 @@ import cl.logisticaverde.app.domain.sync.SyncException
 import com.google.gson.JsonParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -75,7 +76,9 @@ class JornadaSyncRepository(
     }
 
     /**
-     * Descarga las 4 tablas maestras desde Supabase PostgreSQL y actualiza Room mediante @Upsert.
+     * Descarga los 5 catálogos desde Supabase y actualiza Room con una sola política (ISSUE-63):
+     * lo que ya no viene del servidor queda inactivo en el teléfono (no se borra). Una lista vacía
+     * no cambia nada (protege de un servidor a medio preparar).
      * Si falla, Room mantiene su catálogo local (la app sigue funcionando) y se informa el estado.
      *
      * BR-10: el estado de una herramienta usada en una jornada no sincronizada no se
@@ -88,32 +91,28 @@ class JornadaSyncRepository(
             val herramientas = supabaseApi.getHerramientasCatalogo().cuerpoOError("catálogo de herramientas")
             herramientas.takeIf { it.isNotEmpty() }?.let { remotas ->
                 val protegidas = jornadaDao.getQrHerramientasNoSincronizadas().toSet()
+                // Una sola lectura del catálogo local (antes, una consulta por herramienta protegida)
+                val estadoLocal = if (protegidas.isEmpty()) emptyMap() else
+                    catalogoDao.observeHerramientasCatalogo().first().associate { it.qrCodigo to it.estado }
                 val fusionadas = remotas.map { remota ->
-                    val local = if (remota.qrCodigo in protegidas) {
-                        catalogoDao.getHerramientaByQr(remota.qrCodigo)
-                    } else {
-                        null
-                    }
-                    if (local != null) remota.copy(estado = local.estado) else remota
+                    val local = estadoLocal[remota.qrCodigo]?.takeIf { remota.qrCodigo in protegidas }
+                    if (local != null) remota.copy(estado = local) else remota
                 }
-                catalogoDao.upsertHerramientas(fusionadas)
+                catalogoDao.sincronizarHerramientas(fusionadas)
             }
 
             supabaseApi.getTiposBasuraCatalogo().cuerpoOError("catálogo de residuos")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertTiposBasura(it) }
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.sincronizarTiposBasura(it) }
+
+            supabaseApi.getPlayasCatalogo().cuerpoOError("catálogo de playas")
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.sincronizarPlayas(it) }
 
             // ISSUE-62: brigadas de cada playa
             supabaseApi.getBrigadasCatalogo().cuerpoOError("catálogo de brigadas")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.upsertBrigadas(it) }
-
-            // Playas antes que sectores: cada sector pertenece a una playa.
-            // ISSUE-43: se reemplazan por completo, así lo borrado en Supabase desaparece del teléfono.
-            // Una lista vacía no borra nada (protege de un servidor a medio preparar).
-            supabaseApi.getPlayasCatalogo().cuerpoOError("catálogo de playas")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.reemplazarPlayas(it) }
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.sincronizarBrigadas(it) }
 
             supabaseApi.getSectoresCatalogo().cuerpoOError("catálogo de sectores")
-                .takeIf { it.isNotEmpty() }?.let { catalogoDao.reemplazarSectores(it) }
+                .takeIf { it.isNotEmpty() }?.let { catalogoDao.sincronizarSectores(it) }
 
             EstadoServidor.OK
         } catch (e: CancellationException) {

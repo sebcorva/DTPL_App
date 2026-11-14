@@ -416,7 +416,7 @@ class JornadaSyncRepositoryTest {
     }
 
     @Test
-    fun `ISSUE-43 Sectores borrados en Supabase desaparecen del telefono`() = runTest {
+    fun `ISSUE-63 Sectores que ya no vienen de Supabase quedan inactivos en el telefono, sin borrarse`() = runTest {
         // Copia local con un sector que el servidor ya no tiene (SECTOR-TEST de la prueba de ISSUE-42)
         val sectorPrueba = SectorCatalogoEntity(
             idSector = "SECTOR-TEST",
@@ -430,10 +430,24 @@ class JornadaSyncRepositoryTest {
         fakeApi.sectoresRemotos = CatalogoSeedData.sectoresPlayaGrande
         assertEquals(EstadoServidor.OK, repository().sincronizarCatalogosMaestros())
 
-        assertEquals(
-            CatalogoSeedData.sectoresPlayaGrande.map { it.idSector },
-            fakeCatalogoDao.getSectoresList().map { it.idSector }
-        )
+        val locales = fakeCatalogoDao.getSectoresList()
+        assertFalse(locales.single { it.idSector == "SECTOR-TEST" }.estaActivo)
+        assertTrue(locales.filter { it.idSector != "SECTOR-TEST" }.all { it.estaActivo })
+
+        // Si el servidor lo vuelve a publicar, se reactiva
+        fakeApi.sectoresRemotos = CatalogoSeedData.sectoresPlayaGrande + sectorPrueba
+        repository().sincronizarCatalogosMaestros()
+        assertTrue(fakeCatalogoDao.getSectoresList().single { it.idSector == "SECTOR-TEST" }.estaActivo)
+    }
+
+    @Test
+    fun `ISSUE-63 Una herramienta que ya no viene del servidor queda inactiva y conserva su estado`() = runTest {
+        fakeApi.herramientasRemotas = CatalogoSeedData.herramientasQr.filter { it.qrCodigo != "INV-03-RASTRILLO-04" }
+        repository().sincronizarCatalogosMaestros()
+
+        val rastrillo = fakeCatalogoDao.getHerramientaByQr("INV-03-RASTRILLO-04")!!
+        assertFalse(rastrillo.estaActivo)
+        assertTrue(fakeCatalogoDao.getHerramientaByQr("INV-02-PINZA-01")!!.estaActivo)
     }
 
     @Test

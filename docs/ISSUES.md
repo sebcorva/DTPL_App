@@ -554,7 +554,7 @@
   - Índices para las FK y la consulta del inventario: `herramienta_jornada(qr_codigo)`, `jornada(id_playa)`, `jornada(id_brigada)`, `basura_recolectada(id_tipo_basura)`, `jornada_sector(id_sector)`, `brigada_catalogo(id_playa)`.
   - Reinstalación destructiva (`supabase_reset.sql` + esquema) y Room v7 destructiva: aún no hay datos reales.
 
-### `[ISSUE-63]` Política única de catálogos: "lo que no viene del servidor queda inactivo" · 0,25 d
+### `[ISSUE-63]` ✅ Política única de catálogos: "lo que no viene del servidor queda inactivo" · 0,25 d
 * **Hallazgo:** playas y sectores se reemplazaban (se borraba lo que el servidor ya no enviaba) y herramientas y tipos de residuo solo se agregaban; un `DELETE` hecho a mano en Supabase dejaba al teléfono ofreciendo algo que la RPC rechaza.
 * **Decisión del 13-11-2026:** `is_activo` solo decide qué se muestra en la app; los datos se quedan en la base. Al descargar los catálogos, lo que no viene del servidor se marca inactivo en el teléfono (nunca se borra, para no romper las FK de jornadas locales); si vuelve a venir, se reactiva.
 

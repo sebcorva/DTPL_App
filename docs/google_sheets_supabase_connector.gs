@@ -275,7 +275,7 @@ function sincronizar() {
       escribirDatos(ss.getSheetByName(h), filas, def.columnas);
     });
     escribirListas(ss.getSheetByName(HOJA.LISTAS), playas, brigadas, area);
-    ss.getSheetByName(HOJA.KPI).getRange("E3").setValue(serialChile(new Date()));
+    ss.getSheetByName(HOJA.KPI).getRange("E3").setNumberFormat("dd-mm-yyyy hh:mm").setValue(serialChile(new Date()));
 
     avisar(`Sincronizado: ${datos[HOJA.JORNADAS].length} jornadas, ${datos[HOJA.RESIDUOS].length} filas de residuos, ` +
       `${datos[HOJA.HERRAMIENTAS].length} herramientas.`);
@@ -528,20 +528,26 @@ function criterios(brigada) {
 }
 
 function estructurarKpi(sheet, listas) {
-  // Conserva los filtros elegidos (B3:B6); el resto se rehace.
-  const filtros = sheet.getRange("B3:B6").getValues();
-  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart();
+  // Conserva los filtros elegidos (B3:B6) si son válidos; el resto se rehace.
+  const prev = sheet.getRange("B3:B6").getValues().map(r => r[0]);
+  // clear() no borra las validaciones: si quedaran, escribir B3 antes de darle formato de fecha
+  // viola "requireDate" y el script se detiene a mitad del KPI.
+  sheet.getRange(1, 1, sheet.getMaxRows(), sheet.getMaxColumns()).breakApart().clearDataValidations();
   sheet.clear();
-  sheet.getRange("B3:B6").setValues(filtros);
 
   titulo(sheet, "A1", "PANEL KPI | Resumen por filtros");
   sheet.getRange("A3:A6").setValues([["Desde"], ["Hasta"], ["Playa"], ["Brigada"]]).setFontWeight("bold");
   const hoy = Utilities.formatDate(new Date(), CFG.ZONA, "yyyy-MM-dd").split("-").map(Number);
-  if (sheet.getRange("B3").getValue() === "") sheet.getRange("B3").setValue(serial(hoy[0], hoy[1], 1));
-  if (sheet.getRange("B4").getValue() === "") sheet.getRange("B4").setValue(serial(hoy[0], 12, 31));
-  if (sheet.getRange("B5").getValue() === "") sheet.getRange("B5").setValue("Todos");
-  if (sheet.getRange("B6").getValue() === "") sheet.getRange("B6").setValue("Todos");
-  sheet.getRange("B3:B4").setNumberFormat("dd-mm-yyyy")
+  const fechaPrevia = v => (v instanceof Date && !isNaN(v.getTime())) ? serialChile(v) : (typeof v === "number" && v > 0 ? v : "");
+  const textoPrevio = v => (typeof v === "string" && v.trim() ? v : "Todos");
+  sheet.getRange("B3:B4").setNumberFormat("dd-mm-yyyy");
+  sheet.getRange("B3:B6").setValues([
+    [fechaPrevia(prev[0]) || serial(hoy[0], hoy[1], 1)],
+    [fechaPrevia(prev[1]) || serial(hoy[0], 12, 31)],
+    [textoPrevio(prev[2])],
+    [textoPrevio(prev[3])],
+  ]);
+  sheet.getRange("B3:B4")
     .setDataValidation(SpreadsheetApp.newDataValidation().requireDate().setAllowInvalid(false).build());
   sheet.getRange("B5").setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInRange(listas.getRange("A2:A"), true).setAllowInvalid(false).build());

@@ -37,7 +37,11 @@ class GpsDistanceTracker(context: Context) {
         lastValidLocation = null
         isTracking = true
 
-        val request = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 15_000L)
+        // ISSUE-64: alta precisión = chip GPS, que funciona sin internet (sin datos solo tarda más la
+        // primera posición). BALANCED se ubicaba por Wi-Fi y antenas (~100 m) y casi no encendía el GPS:
+        // en una playa sin Wi-Fi todas las lecturas quedaban sobre 35 m y se descartaban (0 km, sin coordenada).
+        // ⚠️ Gasta más batería: medirlo en el piloto (ISSUE-29, meta < 5 % en 3 h).
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 15_000L)
             .setMinUpdateIntervalMillis(8_000L)
             .setMinUpdateDistanceMeters(6f)
             .build()

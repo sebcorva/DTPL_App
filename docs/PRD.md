@@ -343,7 +343,7 @@ erDiagram
 ## 6. Requerimientos No Funcionales (RNF)
 
 1. **RNF-01 — Persistencia paso a paso:** cada avance de pantalla, cada participante agregado o eliminado y cada toque de la botonera se persiste de inmediato en Room.
-2. **RNF-02 — GPS eficiente y continuo:** `Foreground Service` con `foregroundServiceType="location"`, `PRIORITY_BALANCED_POWER_ACCURACY` y filtro anti-rebote (> 5 m, precisión ≤ 35 m, saltos ≤ 500 m). Funciona con la pantalla apagada. Objetivo: **< 5 % de batería en 3 horas**. Requiere `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` y `POST_NOTIFICATIONS` (Android 13+).
+2. **RNF-02 — GPS eficiente y continuo:** `Foreground Service` con `foregroundServiceType="location"`, `PRIORITY_HIGH_ACCURACY` (ISSUE-64) y filtro anti-rebote (> 5 m, precisión ≤ 35 m, saltos ≤ 500 m). Funciona con la pantalla apagada. Objetivo: **< 5 % de batería en 3 horas**. Requiere `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION` y `POST_NOTIFICATIONS` (Android 13+).
 3. **RNF-03 — Fotos optimizadas:** `1280x720 px`, JPEG 75 % (~180 KB), guardadas en `filesDir/evidencias/`.
 4. **RNF-04 — Sincronización atómica, idempotente y honesta:** ver §5.1 y §5.2.
 5. **RNF-05 — Seguridad de datos:** RLS en todas las tablas; la clave del APK no permite leer participantes ni modificar jornadas; la clave secreta nunca va en el APK ni en el repositorio. El *logging* HTTP está activo **solo en debug**.

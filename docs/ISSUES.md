@@ -558,7 +558,7 @@
 * **Hallazgo:** playas y sectores se reemplazaban (se borraba lo que el servidor ya no enviaba) y herramientas y tipos de residuo solo se agregaban; un `DELETE` hecho a mano en Supabase dejaba al teléfono ofreciendo algo que la RPC rechaza.
 * **Decisión del 13-11-2026:** `is_activo` solo decide qué se muestra en la app; los datos se quedan en la base. Al descargar los catálogos, lo que no viene del servidor se marca inactivo en el teléfono (nunca se borra, para no romper las FK de jornadas locales); si vuelve a venir, se reactiva.
 
-### `[ISSUE-64]` GPS en alta precisión · 0,1 d
+### `[ISSUE-64]` ✅ GPS en alta precisión · 0,1 d
 * **Hallazgo:** `PRIORITY_BALANCED_POWER_ACCURACY` se ubica sobre todo por Wi-Fi y antenas (~100 m) y casi no enciende el GPS; como se descartan las lecturas peores que 35 m, en una playa sin Wi-Fi ni datos la jornada probablemente quedaba con 0 km y sin coordenada. El GPS no necesita internet (sin datos solo tarda más la primera posición).
 * **Decisión del 13-11-2026:** `PRIORITY_HIGH_ACCURACY`. ⚠️ Medir la batería en el piloto (ISSUE-29, meta < 5 % en 3 h).
 

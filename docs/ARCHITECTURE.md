@@ -155,7 +155,7 @@ sequenceDiagram
 ## 7. GPS — `LimpiezaLocationService`
 
 * `foregroundServiceType="location"`, notificación persistente con los km actuales.
-* `LocationRequest`: `PRIORITY_BALANCED_POWER_ACCURACY`, intervalo de 15 s, mínimo de 8 s, `minUpdateDistance` de 6 m.
+* `LocationRequest`: `PRIORITY_HIGH_ACCURACY` (chip GPS, funciona sin internet; ISSUE-64), intervalo de 15 s, mínimo de 8 s, `minUpdateDistance` de 6 m.
 * Filtro: precisión ≤ 35 m; delta entre 5 y 500 m (reutiliza la lógica de `GpsDistanceTracker`).
 * Escribe en Room (`updateKmRecorridos`, coordenada inicial); la UI observa la jornada.
 * Ciclo de vida: `startForegroundService` al comenzar; `stopSelf` al finalizar; reinicio al reanudar P5 con la limpieza iniciada.

@@ -60,6 +60,19 @@ class ValidadorJornadaTest {
     }
 
     @Test
+    fun issue60_guia_de_despacho_valida_o_vacia() {
+        assertEquals(emptyList<String>(), validar(jornadaValida.copy(nroGuiaDespacho = "GD-2026-0041")))
+        assertEquals(emptyList<String>(), validar(jornadaValida.copy(nroGuiaDespacho = null)))
+    }
+
+    @Test
+    fun issue60_guia_de_despacho_con_formula_o_muy_larga_se_rechaza() {
+        listOf("=IMPORTXML(1)", "-123", "GD 2026", "GD-2026-00411", "123/45").forEach { guia ->
+            assertTrue(guia, "N° de guía de despacho inválido" in validar(jornadaValida.copy(nroGuiaDespacho = guia)))
+        }
+    }
+
+    @Test
     fun foto_omitida_sin_motivo() {
         val problemas = validar(jornadaValida.copy(motivoOmisionSacos = "   "))
         assertEquals(listOf("Falta el motivo para omitir la foto de sacos"), problemas)

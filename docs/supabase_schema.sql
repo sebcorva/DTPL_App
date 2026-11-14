@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS public.jornada_rechazada (
     id BIGSERIAL PRIMARY KEY,
     id_registro TEXT NOT NULL,              -- '' si el payload no traía uno válido
     motivo TEXT NOT NULL,
-    payload JSONB,                          -- NULL si el payload superaba 100 kB
+    payload JSONB,                          -- NULL si el payload superaba 20 kB (ISSUE-60)
     intentos INTEGER NOT NULL DEFAULT 1,
     primer_intento TIMESTAMPTZ NOT NULL DEFAULT now(),
     ultimo_intento TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -415,6 +415,10 @@ BEGIN
     IF v_destino_normal <> 'Entregado a camión DIMAO' THEN
         v_guia := NULL;
     END IF;
+    -- ISSUE-60: era el único texto libre sin tope. Mismo formato que ReglasTexto.kt
+    IF v_guia IS NOT NULL AND v_guia !~ '^[A-Za-z0-9][A-Za-z0-9-]{0,11}$' THEN
+        RAISE EXCEPTION 'nro_guia_despacho inválido (1 a 12 letras, números o guion)' USING ERRCODE = '22023';
+    END IF;
 
     -- ---------- Fotos: URL de este bucket y de esta jornada, u omitida con motivo ----------
     FOR v_i IN 1..3 LOOP
@@ -586,8 +590,9 @@ DECLARE
     v_resultado text;
     v_motivo text;
     v_id text;
-    c_max_payload constant integer := 100000;   -- bytes guardados por rechazo
-    c_max_pendientes constant integer := 5000;  -- tope de filas sin resolver (anti-spam con la clave pública)
+    -- ISSUE-60: una jornada real pesa 1–5 kB. Peor caso con la clave pública: 1.000 × 20 kB ≈ 20 MB
+    c_max_payload constant integer := 20000;    -- bytes guardados por rechazo (si se supera, se guarda sin payload)
+    c_max_pendientes constant integer := 1000;  -- tope de filas sin resolver (anti-spam con la clave pública)
 BEGIN
     v_id := left(COALESCE(p -> 'jornada' ->> 'id_registro', ''), 40);
 

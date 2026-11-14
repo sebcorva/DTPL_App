@@ -94,6 +94,8 @@ fun EntregaSacosScreen(
                         onValueChange = onNroGuiaDespachoChange,
                         label = { Text("N° guía de despacho (opcional)") },
                         placeholder = { Text("Ej.: GD-2026-0041") },
+                        isError = uiState.errorGuiaDespacho != null,
+                        supportingText = uiState.errorGuiaDespacho?.let { mensaje -> { Text(mensaje) } },
                         singleLine = true,
                         shape = FormaCampoFlujo,
                         colors = coloresCampoFlujo(),

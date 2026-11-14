@@ -133,7 +133,7 @@ sequenceDiagram
 ### 5.4 Manejo de errores [ISSUE-42]
 * `domain/sync/ErrorSync.kt`: `SinConfiguracion`, `SinConexion` (IOException), `ServidorNoPreparado` (PGRST202/205, 404), `NoAutorizado` (401/403), `ErrorServidor` (5xx), `Rechazada(motivo)` (RPC `RECHAZADA: …` o 400 22xxx/23xxx), `FotoFaltante`, `Desconocido`. `MensajesSync` da el texto para el líder; `RegistroErrores` escribe en `Log` (sin nombres ni coordenadas).
 * `detenerLote` (sin internet, servidor, permisos) corta el lote; `rechazaJornada` deja la jornada en `ERROR_SYNC`; el resto queda `PENDIENTE_SYNC`. `CancellationException` siempre se propaga.
-* RPC: `sincronizar_jornada` (pública) envuelve a `sincronizar_jornada_interna`; los errores de clase 22/23 se registran en `jornada_rechazada` (deduplicado por id + motivo, tope 5.000 sin resolver, payload ≤ 100 kB) y se responden como `RECHAZADA: <motivo>` (HTTP 200). Si después entra, la fila queda `resuelta`.
+* RPC: `sincronizar_jornada` (pública) envuelve a `sincronizar_jornada_interna`; los errores de clase 22/23 se registran en `jornada_rechazada` (deduplicado por id + motivo, tope 1.000 sin resolver, payload ≤ 20 kB — ISSUE-60) y se responden como `RECHAZADA: <motivo>` (HTTP 200). Si después entra, la fila queda `resuelta`.
 * P1: "Servidor en mantención" (revisión al volver al menú, ≤ 1 cada 30 s, y al recuperar internet); error ~4 s en la línea de estado; "N jornada(s) rechazada(s) · revisar en Reportes" y globo rojo en Reportes.
 * P2–P9: `CoroutineExceptionHandler` en `JornadaFlujoViewModel` → snackbar "No se pudo guardar. Intenta de nuevo." (la navegación de esa acción no ocurre). P9 valida con `ValidadorJornada` (mismas reglas que la RPC) antes de cerrar.
 * Servicio GPS, P10 y escáner QR: errores registrados sin cerrar la app.

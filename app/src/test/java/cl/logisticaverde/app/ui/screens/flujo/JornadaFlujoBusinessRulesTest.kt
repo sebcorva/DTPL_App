@@ -616,6 +616,19 @@ class JornadaFlujoBusinessRulesTest {
     }
 
     @Test
+    fun `ISSUE-60 - La guia de despacho se corta en 12 caracteres y una invalida muestra error`() = runTest {
+        viewModel.onKgBasuraNormalChange("20")
+        viewModel.selectDestinoBasuraNormal(JornadaEntity.DESTINO_NORMAL_DIMAO)
+
+        viewModel.onNroGuiaDespachoChange("GD-2026-0041-EXTRA")
+        assertEquals("GD-2026-0041", viewModel.uiState.value.nroGuiaDespachoInput)
+        assertNull(viewModel.uiState.value.errorGuiaDespacho)
+
+        viewModel.onNroGuiaDespachoChange("=SUMA(A1)")
+        assertNotNull(viewModel.uiState.value.errorGuiaDespacho)
+    }
+
+    @Test
     fun `ISSUE-32 - P3 muestra solo los sectores de la playa elegida y cambiar de playa los limpia`() = runTest {
         fakeCatalogoDao.upsertPlayas(
             CatalogoSeedData.playas + PlayaCatalogoEntity(idPlaya = "PLAYA-02", nombrePlaya = "Playa Chica")

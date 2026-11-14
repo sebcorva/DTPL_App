@@ -524,12 +524,12 @@
   - [x] `insertJornada` con `ABORT` y reintento con otro ID.
   - [ ] De fondo (ISSUE-40): bucket privado con URLs firmadas.
 
-### `[ISSUE-60]` 🟠 Llenado de la base de datos con la clave pública
+### `[ISSUE-60]` ✅ 🟠 Llenado de la base de datos con la clave pública
 * **Hallazgo:** `jornada_rechazada` acepta hasta 5.000 rechazos sin resolver de hasta 100 KB cada uno (`c_max_payload`): ~500 MB, todo el plan gratuito. Las jornadas válidas no tienen tope. Un payload real pesa 1–5 KB.
 > **Decisiones del 13-11-2026:** `c_max_payload` 20 KB y `c_max_pendientes` 1.000 (peor caso ~20 MB). `nro_guia_despacho` era el único texto libre sin tope: máx. 12 caracteres (letras, números y guion).
 * **Criterios de aceptación:**
-  - [ ] `c_max_payload` = 20 KB y `c_max_pendientes` = 1.000.
-  - [ ] `nro_guia_despacho` de 1 a 12 caracteres en la app y la RPC.
+  - [x] `c_max_payload` = 20 KB y `c_max_pendientes` = 1.000.
+  - [x] `nro_guia_despacho` de 1 a 12 caracteres en la app y la RPC.
   - [ ] 📝 Anotado: evaluar un tope de jornadas por día (o por brigada y día) en la RPC.
 
 ### `[ISSUE-61]` 🟡 Hallazgos menores de seguridad — anotados

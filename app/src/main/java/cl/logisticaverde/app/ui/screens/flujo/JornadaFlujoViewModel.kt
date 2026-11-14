@@ -14,6 +14,7 @@ import cl.logisticaverde.app.data.local.entity.ParticipanteJornadaEntity
 import cl.logisticaverde.app.data.local.entity.PlayaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.SectorCatalogoEntity
 import cl.logisticaverde.app.domain.reglas.FechaJornada
+import cl.logisticaverde.app.domain.reglas.ReglasTexto
 import cl.logisticaverde.app.domain.reglas.TopesJornada
 import cl.logisticaverde.app.domain.util.ImageCompressor
 import cl.logisticaverde.app.domain.reglas.ValidadorJornada
@@ -202,6 +203,10 @@ data class EquipoSeleccionUiState(
      */
     val mostrarCampoGuiaDespacho: Boolean
         get() = destinoBasuraNormal == JornadaEntity.DESTINO_NORMAL_DIMAO && kgBasuraNormalVal > 0f
+
+    /** ISSUE-60: mensaje bajo el campo de la guía (null si está vacía o es válida). */
+    val errorGuiaDespacho: String?
+        get() = if (mostrarCampoGuiaDespacho) ReglasTexto.errorGuia(nroGuiaDespachoInput) else null
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -1112,7 +1117,8 @@ class JornadaFlujoViewModel(
     fun onNroGuiaDespachoChange(value: String) {
         _uiState.update { current ->
             if (!current.mostrarCampoGuiaDespacho) return@update current
-            current.copy(nroGuiaDespachoInput = value)
+            // ISSUE-60: no se puede escribir más allá del máximo
+            current.copy(nroGuiaDespachoInput = value.take(ReglasTexto.MAX_CARACTERES_GUIA))
         }
     }
 
@@ -1131,6 +1137,10 @@ class JornadaFlujoViewModel(
 
         if (state.destinoBasuraNormal !in state.opcionesPermitidasBasuraNormal) return
         if (state.destinoBasuraReciclable !in state.opcionesPermitidasBasuraReciclable) return
+        if (state.errorGuiaDespacho != null) {
+            _avisos.tryEmit("Revisa el N° de guía de despacho.")
+            return
+        }
 
         val guiaFinal = if (state.mostrarCampoGuiaDespacho) {
             state.nroGuiaDespachoInput.trim().takeIf { it.isNotEmpty() }

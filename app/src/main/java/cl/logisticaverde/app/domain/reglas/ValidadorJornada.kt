@@ -95,6 +95,11 @@ object ValidadorJornada {
                 (kgReciclable == 0f) == (jornada.destinoBasuraReciclable == JornadaEntity.DESTINO_RECICLABLE_NO_APLICA),
             "\"No aplicable\" solo corresponde cuando hay 0 kg"
         )
+        // ISSUE-60: la guía solo viaja con destino DIMAO (la RPC la descarta en otro caso)
+        val guia = jornada.nroGuiaDespacho?.trim().orEmpty()
+        if (guia.isNotEmpty() && jornada.destinoBasuraNormal == JornadaEntity.DESTINO_NORMAL_DIMAO) {
+            regla(ReglasTexto.esGuiaValida(guia), "N° de guía de despacho inválido")
+        }
 
         // ---------- Fotos: tomada, o con motivo ----------
         listOf(

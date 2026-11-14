@@ -17,7 +17,7 @@
 | `docs/ARCHITECTURE.md` | Documento derivado: detalle técnico de cómo se implementa este PRD. |
 | `docs/GLOSSARY.md` | Documento derivado: vocabulario de negocio y técnico. |
 | `logistica-verde-doc/plan_de_trabajo.md` | Insumo de la clienta (v2), **ya incorporado** en esta versión del PRD y en ISSUES. |
-| `logistica-verde-doc/Logistica_Verde_Piloto.xlsx` | **Fuera de alcance** hasta que la clienta reformule la planilla (ver §8). |
+| `Planilla_Registro_y_KPI_Logistica_Verde_v2.xlsx` | Planilla de la clienta (13-11-2026): referencia del diseño de la planilla de Google Sheets (ISSUE-30). |
 
 > En caso de contradicción entre documentos, prevalece **PRD.md**; luego **ISSUES.md**. El PRD de 8 pantallas (PDF, backend Apps Script/Drive) y el entregable académico `.docx` (AppSheet) fueron **eliminados** por obsoletos.
 
@@ -55,7 +55,7 @@
 2. **En la Nube (Supabase):**
    - **Catálogos maestros** (`sector_catalogo`, `herramienta_catalogo`, `tipo_basura_catalogo`) administrados por el desarrollador; la app solo puede **leerlos**.
    - **Jornadas:** la app sube las fotos al bucket `evidencias-fotos` (solo inserción) y luego llama a la función **`sincronizar_jornada(jsonb)`**, que inserta la jornada con todos sus detalles **en una sola transacción**. La clave pública del APK no tiene ningún otro permiso de escritura.
-3. **Reportería (Google Sheets):** un script de Apps Script lee la vista consolidada de Supabase con la **clave secreta** (guardada solo en las *Script Properties* de la planilla) y sirve como *keep-alive* diario del plan gratuito. El diseño final de la planilla queda pendiente de la clienta (§8).
+3. **Reportería (Google Sheets):** un script de Apps Script crea la estructura de la planilla (`crearEstructura()`: Inicio, KPI, Jornadas, Residuos, Herramientas) y la llena desde las vistas de reportería (`vista_jornada`, `vista_residuos`, `vista_herramientas`, `vista_area_diaria`) con la **clave secreta** (guardada solo en las *Script Properties*). La sincronización diaria también es el *keep-alive* del plan gratuito (ISSUE-27 / ISSUE-30).
 
 ---
 
@@ -376,7 +376,7 @@ erDiagram
 
 ## 8. Fuera de Alcance y Pendientes de la Clienta
 
-* **Planilla Excel / Google Sheets (`TABLERO_KPIs`):** la clienta la reformulará. Luego se diseñará cómo poblarla desde Supabase. Mientras tanto, el conector solo se ajusta para seguir funcionando con el nuevo esquema y la clave secreta.
+* **Planilla Google Sheets:** ✅ definida el 13-11-2026 a partir de la planilla v2 de la clienta (ISSUE-30); la arma y la llena el conector (ISSUE-27). Fuera de alcance: gráficos y una web de reportes.
 * **Contenido de la tarjeta de Instagram:** logo, hashtag / @cuenta y datos educativos con fuente verificable.
 * **`META_APP_ID` (opcional):** si la clienta registra una app en Meta for Developers, se habilita la apertura directa del editor de Historias.
 * Fuera de alcance del piloto: los 1.800 m totales de la playa, el transporte de residuos y la gestión de maquinaria municipal.

@@ -154,11 +154,7 @@ fun LogisticaVerdeNavHost(
                 onReportesClick = {
                         navController.navigate(AppDestinations.REPORTES) { launchSingleTop = true }
                     },
-                    onFeedbackMostrado = menuViewModel::limpiarResultadoSync,
-                    // Solo desarrollo (ISSUE-45)
-                    onEliminarJornadaEnCurso = {
-                        flujoViewModel.eliminarJornadaEnCurso { LimpiezaLocationService.detener(context) }
-                    }
+                    onFeedbackMostrado = menuViewModel::limpiarResultadoSync
                 )
             }
 

@@ -18,12 +18,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.material.icons.outlined.DeleteForever
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -102,20 +96,8 @@ fun MenuPrincipalScreen(
     modifier: Modifier = Modifier,
     onReportesClick: () -> Unit = {},
     onVerUltimaJornada: (idRegistro: String) -> Unit = {},
-    onFeedbackMostrado: () -> Unit = {},
-    // Solo para desarrollo (decisión 07-11-2026): quitar antes del piloto (ISSUE-45)
-    onEliminarJornadaEnCurso: () -> Unit = {}
+    onFeedbackMostrado: () -> Unit = {}
 ) {
-    var confirmarEliminar by remember { mutableStateOf(false) }
-    if (confirmarEliminar && uiState.jornadaEnCurso != null) {
-        DialogoEliminarJornada(
-            onConfirmar = {
-                confirmarEliminar = false
-                onEliminarJornadaEnCurso()
-            },
-            onCancelar = { confirmarEliminar = false }
-        )
-    }
     Column(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -125,21 +107,7 @@ fun MenuPrincipalScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(Modifier.height(4.dp))
-            Box(modifier = Modifier.fillMaxWidth()) {
-                EncabezadoApp()
-                if (uiState.jornadaEnCurso != null) {
-                    IconButton(
-                        onClick = { confirmarEliminar = true },
-                        modifier = Modifier.align(Alignment.TopEnd)
-                    ) {
-                        Icon(
-                            Icons.Outlined.DeleteForever,
-                            contentDescription = "Eliminar jornada en curso",
-                            tint = ErrorRojo
-                        )
-                    }
-                }
-            }
+            EncabezadoApp()
             TarjetaPortada()
             BotonJornada(uiState, onIniciarJornadaClick)
             uiState.ultimaJornada?.let { ultima ->
@@ -160,31 +128,6 @@ fun MenuPrincipalScreen(
             onReportes = onReportesClick
         )
     }
-}
-
-@Composable
-private fun DialogoEliminarJornada(onConfirmar: () -> Unit, onCancelar: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onCancelar,
-        icon = { Icon(Icons.Outlined.DeleteForever, contentDescription = null, tint = ErrorRojo) },
-        title = { Text("¿Eliminar la jornada en curso?") },
-        text = {
-            Text(
-                "Se borrarán del teléfono el equipo, las herramientas, la basura registrada y las fotos " +
-                    "de esta jornada, y se detendrá el GPS si está activo. Las jornadas ya cerradas no se tocan.\n\n" +
-                    "Esta acción no se puede deshacer."
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirmar) {
-                Text("Eliminar", color = ErrorRojo, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onCancelar) { Text("Cancelar", color = AzulMarino) }
-        },
-        containerColor = Blanco
-    )
 }
 
 /** Logo con anillo blanco y "Deja tu / Playa Limpia" (P1 y animación de entrada, ISSUE-54). */

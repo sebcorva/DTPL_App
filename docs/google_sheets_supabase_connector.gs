@@ -486,6 +486,18 @@ function baseHoja(sheet, colorPestana) {
   if (colorPestana) sheet.setTabColor(colorPestana);
 }
 
+/**
+ * Logo de la app arriba a la izquierda (A1), en un área sin datos: Sheets no permite imágenes de
+ * fondo y una imagen sobre las celdas taparía los datos. LOGO_PNG_BASE64 está en logo.gs.
+ * Al volver a ejecutar se reemplaza el anterior (no se duplica).
+ */
+function insertarLogo(sheet) {
+  sheet.getImages().forEach(img => img.remove());
+  sheet.setRowHeight(1, 64);
+  const blob = Utilities.newBlob(Utilities.base64Decode(LOGO_PNG_BASE64), "image/png", "logo.png");
+  sheet.insertImage(blob, 1, 1, 8, 4).setWidth(56).setHeight(56).setAltTextTitle("Deja tu Playa Limpia");
+}
+
 /** Línea suave bajo cada fila del rango. */
 function separadores(range) {
   range.setBorder(null, null, true, null, null, true, UI.BORDE, SpreadsheetApp.BorderStyle.SOLID);
@@ -569,8 +581,9 @@ function protegerConAviso(sheet) {
 function estructurarInicio(sheet) {
   sheet.clear();
   baseHoja(sheet, UI.PETROLEO);
-  titulo(sheet, "A1", "Deja tu Playa Limpia · Registro de jornadas y KPI");
-  sheet.getRange("A2").setValue("Logística Verde").setFontColor(UI.MARINO_SUAVE).setFontWeight("bold");
+  insertarLogo(sheet);
+  titulo(sheet, "B1", "Deja tu Playa Limpia · Registro de jornadas y KPI");
+  sheet.getRange("B2").setValue("Logística Verde").setFontColor(UI.MARINO_SUAVE).setFontWeight("bold");
   const filas = [
     ["Propósito", "Consolidar las jornadas que las brigadas registran en la app «Deja tu Playa Limpia» y calcular indicadores descriptivos."],
     ["Origen de los datos", "Supabase. Menú «Logística Verde → Sincronizar ahora»; además se sincroniza sola todos los días a las 8:00."],
@@ -645,7 +658,8 @@ function estructurarKpi(sheet, listas) {
   sheet.clear();
   baseHoja(sheet, UI.VERDE);
 
-  titulo(sheet, "A1", "Panel KPI · Resumen por filtros");
+  insertarLogo(sheet);
+  titulo(sheet, "B1", "Panel KPI · Resumen por filtros");
   sheet.getRange("A3:A6").setValues([["Desde"], ["Hasta"], ["Playa"], ["Brigada"]])
     .setFontWeight("bold").setFontColor(UI.MARINO_SUAVE);
   const hoy = Utilities.formatDate(new Date(), CFG.ZONA, "yyyy-MM-dd").split("-").map(Number);

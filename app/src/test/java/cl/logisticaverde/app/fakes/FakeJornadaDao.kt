@@ -72,14 +72,18 @@ class FakeJornadaDao : JornadaDao {
     override suspend fun getJornadasPendientesSync(): List<JornadaEntity> =
         jornadasFlow.value.filter { it.estadoSync == JornadaEntity.SYNC_PENDIENTE }
 
+    /** Igual que Room con ABORT (ISSUE-59): un ID repetido falla en vez de reemplazar la jornada. */
     override suspend fun insertJornada(jornada: JornadaEntity) {
-        jornadasFlow.update { current ->
-            current.filterNot { it.idRegistro == jornada.idRegistro } + jornada
+        check(jornadasFlow.value.none { it.idRegistro == jornada.idRegistro }) {
+            "UNIQUE constraint failed: jornada.id_registro"
         }
+        jornadasFlow.update { it + jornada }
     }
 
     override suspend fun updateJornada(jornada: JornadaEntity) {
-        insertJornada(jornada)
+        jornadasFlow.update { current ->
+            current.map { if (it.idRegistro == jornada.idRegistro) jornada else it }
+        }
     }
 
     override suspend fun updatePantallaActual(idRegistro: String, pantalla: Int) {

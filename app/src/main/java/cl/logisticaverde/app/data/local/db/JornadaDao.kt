@@ -53,7 +53,12 @@ interface JornadaDao {
     @Query("SELECT * FROM jornada WHERE estado_sync = 'PENDIENTE_SYNC' ORDER BY hora_inicio_ms ASC")
     suspend fun getJornadasPendientesSync(): List<JornadaEntity>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * ISSUE-59: ABORT y no REPLACE. En SQLite, REPLACE borra la fila existente antes de insertar,
+     * y ese borrado arrastra en cascada participantes, herramientas y conteos. Con ABORT, un ID
+     * repetido lanza un error en vez de borrar una jornada.
+     */
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertJornada(jornada: JornadaEntity)
 
     @Update

@@ -699,7 +699,7 @@ CREATE POLICY "Subida publica de evidencias desde APK"
 ON storage.objects FOR INSERT TO anon
 WITH CHECK (
     bucket_id = 'evidencias-fotos'
-    -- Mismo formato que JornadaSyncRepository: REG-AAAAMMDD-XXXXXX_{1|2|3}_{tipo}.jpg
+    -- Mismo formato que JornadaSyncRepository: REG-AAAAMMDD-XXXXXXXXXXXX_{1|2|3}_{tipo}.jpg (sufijo de 12 desde ISSUE-59; se aceptan de 4 a 12)
     AND name ~ '^REG-[0-9]{8}-[A-Z0-9]{4,12}_[123]_(inicio|limpio|sacos)\.jpg$'
 );
 -- No se crea política DELETE: con la clave pública no se pueden borrar fotos.

@@ -516,12 +516,12 @@
   - [ ] RPC, `ValidadorJornada` y campos de la app con la misma lista blanca por campo.
   - [ ] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
 
-### `[ISSUE-59]` 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas
+### `[ISSUE-59]` ✅ 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas
 * **Hallazgo:** el sufijo del ID son 6 caracteres hexadecimales de un UUID (`JornadaFlujoViewModel.kt`, `UUID.randomUUID().toString().take(6)`): ~16,7 millones de combinaciones por día. Las fotos (pueden mostrar caras, Ley 21.719 — ISSUE-40) son públicas en `…/REG-AAAAMMDD-XXXXXX_{1|2|3}_{tipo}.jpg`. Riesgos: (a) recorrer URLs por fuerza bruta; (b) **adelantarse a una jornada real**: si alguien sube antes una jornada o una foto con ese ID, la real recibe `YA_EXISTIA` / "ya existe", se marca sincronizada y sus datos se pierden en silencio.
 > **Decisiones del 13-11-2026:** 12 caracteres hexadecimales del UUID. `insertJornada` pasa de `REPLACE` a `ABORT` (un `REPLACE` borra la fila y, en cascada, sus participantes, herramientas y conteos); si el ID ya existe se genera otro (hasta 3 intentos).
 * **Criterios de aceptación:**
-  - [ ] Sufijo de 12 caracteres (~281 billones de combinaciones); el formato `[A-Z0-9]{4,12}` de la RPC, del bucket y de `ValidadorJornada` ya lo acepta.
-  - [ ] `insertJornada` con `ABORT` y reintento con otro ID.
+  - [x] Sufijo de 12 caracteres (~281 billones de combinaciones); el formato `[A-Z0-9]{4,12}` de la RPC, del bucket y de `ValidadorJornada` ya lo acepta.
+  - [x] `insertJornada` con `ABORT` y reintento con otro ID.
   - [ ] De fondo (ISSUE-40): bucket privado con URLs firmadas.
 
 ### `[ISSUE-60]` 🟠 Llenado de la base de datos con la clave pública

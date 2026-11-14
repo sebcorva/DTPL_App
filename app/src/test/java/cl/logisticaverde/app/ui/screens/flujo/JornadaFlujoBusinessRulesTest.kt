@@ -586,6 +586,36 @@ class JornadaFlujoBusinessRulesTest {
     }
 
     @Test
+    fun `ISSUE-59 - El ID de la jornada tiene un sufijo de 12 caracteres hexadecimales`() = runTest {
+        viewModel.agregarVoluntario("Diego")
+
+        val idRegistro = viewModel.uiState.value.idRegistroActivo!!
+        assertTrue(idRegistro, idRegistro.matches(Regex("^REG-[0-9]{8}-[0-9A-F]{12}$")))
+    }
+
+    @Test
+    fun `ISSUE-59 - Un ID repetido no reemplaza la jornada existente, se genera otro`() = runTest {
+        val sufijos = ArrayDeque(listOf("AAAAAAAAAAAA", "AAAAAAAAAAAA", "BBBBBBBBBBBB"))
+        val instante = java.time.Instant.parse("2026-11-16T15:00:00Z").toEpochMilli()
+        val existente = JornadaEntity(
+            idRegistro = "REG-20261116-AAAAAAAAAAAA",
+            nombreLider = "Otra brigada",
+            estadoSync = JornadaEntity.SYNC_PENDIENTE
+        )
+        fakeJornadaDao.insertJornada(existente)
+        val vm = JornadaFlujoViewModel(
+            fakeCatalogoDao, fakeJornadaDao,
+            reloj = { instante },
+            generarSufijoId = { sufijos.removeFirst() }
+        )
+
+        vm.agregarVoluntario("Diego")
+
+        assertEquals("REG-20261116-BBBBBBBBBBBB", vm.uiState.value.idRegistroActivo)
+        assertEquals("Otra brigada", fakeJornadaDao.getJornadaById(existente.idRegistro)!!.nombreLider)
+    }
+
+    @Test
     fun `ISSUE-32 - P3 muestra solo los sectores de la playa elegida y cambiar de playa los limpia`() = runTest {
         fakeCatalogoDao.upsertPlayas(
             CatalogoSeedData.playas + PlayaCatalogoEntity(idPlaya = "PLAYA-02", nombrePlaya = "Playa Chica")

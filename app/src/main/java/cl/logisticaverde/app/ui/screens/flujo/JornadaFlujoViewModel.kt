@@ -209,7 +209,9 @@ class JornadaFlujoViewModel(
     private val catalogoDao: CatalogoDao,
     private val jornadaDao: JornadaDao,
     // Inyectable para probar la fecha de la jornada y el tope de duración
-    private val reloj: () -> Long = { System.currentTimeMillis() }
+    private val reloj: () -> Long = { System.currentTimeMillis() },
+    // Inyectable para probar un ID repetido (ISSUE-59)
+    private val generarSufijoId: () -> String = ::sufijoIdAleatorio
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(EquipoSeleccionUiState())
@@ -538,8 +540,14 @@ class JornadaFlujoViewModel(
     private suspend fun crearJornada(brigada: String): String {
         // Fecha de la jornada (ISSUE-31): el día en que se crea en P2, en hora de Chile
         val fechaHoy = FechaJornada.hoy(reloj())
-        val randomSuffix = UUID.randomUUID().toString().take(6).uppercase()
-        val nuevoIdRegistro = "REG-${FechaJornada.compacta(fechaHoy)}-$randomSuffix"
+        // ISSUE-59: si el ID ya existe en el teléfono se genera otro; insertJornada usa ABORT,
+        // así que una jornada existente nunca se sobrescribe (ni se borran sus datos en cascada)
+        var nuevoIdRegistro = nuevoIdRegistro(fechaHoy)
+        var intentos = 1
+        while (jornadaDao.getJornadaById(nuevoIdRegistro) != null && intentos < MAX_INTENTOS_ID) {
+            nuevoIdRegistro = nuevoIdRegistro(fechaHoy)
+            intentos++
+        }
 
         jornadaDao.insertJornada(
             JornadaEntity(
@@ -567,6 +575,8 @@ class JornadaFlujoViewModel(
         _uiState.update { it.copy(idRegistroActivo = nuevoIdRegistro) }
         return nuevoIdRegistro
     }
+
+    private fun nuevoIdRegistro(fecha: java.time.LocalDate) = "REG-${FechaJornada.compacta(fecha)}-${generarSufijoId()}"
 
     private fun limpiarNombre(nombre: String): String = nombre.trim().replace(Regex("\\s+"), " ")
 
@@ -1158,6 +1168,13 @@ class JornadaFlujoViewModel(
 
     companion object {
         private const val TAG = "JornadaFlujo"
+        private const val MAX_INTENTOS_ID = 3
+
+        /**
+         * ISSUE-59: 12 caracteres hexadecimales del UUID (48 bits aleatorios, ~281 billones por día).
+         * Con 6 (~16,7 millones) se podían adivinar las fotos públicas o adelantarse a una jornada real.
+         */
+        fun sufijoIdAleatorio(): String = UUID.randomUUID().toString().replace("-", "").take(12).uppercase()
         const val AVISO_ERROR_GUARDADO = "No se pudo guardar. Intenta de nuevo."
     }
 

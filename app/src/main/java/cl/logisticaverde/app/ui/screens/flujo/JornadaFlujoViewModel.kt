@@ -93,11 +93,8 @@ data class EquipoSeleccionUiState(
         const val MIN_CARACTERES_NOMBRE_LIDER = 3
         const val BRIGADA_POR_DEFECTO = "Brigada A"
 
-        /** Motivo de una foto omitida: obligatorio, sin contar espacios. */
-        fun esMotivoValido(motivo: String): Boolean {
-            val limpio = motivo.trim()
-            return limpio.isNotEmpty() && limpio.length <= TopesJornada.MAX_CARACTERES_MOTIVO_OMISION
-        }
+        /** Motivo de una foto omitida: obligatorio y solo con caracteres permitidos (ISSUE-58). */
+        fun esMotivoValido(motivo: String): Boolean = motivo.isNotBlank() && ReglasTexto.esMotivoValido(motivo)
     }
 
     /**
@@ -124,6 +121,7 @@ data class EquipoSeleccionUiState(
         get() {
             val limpio = nombreLider.trim()
             if (limpio.isEmpty()) return null
+            ReglasTexto.errorNombre(limpio)?.let { return it }
             if (limpio.length < MIN_CARACTERES_NOMBRE_LIDER) {
                 return "Mínimo $MIN_CARACTERES_NOMBRE_LIDER caracteres."
             }
@@ -173,6 +171,7 @@ data class EquipoSeleccionUiState(
      */
     val esPesajeValido: Boolean
         get() = encargadoPesaje.isNotBlank() &&
+            ReglasTexto.esNombreValido(encargadoPesaje) &&
             cantidadSacosVal > 0 &&
             kgTotalesVal > 0f &&
             !excedeLimiteLeySaco &&
@@ -203,6 +202,10 @@ data class EquipoSeleccionUiState(
      */
     val mostrarCampoGuiaDespacho: Boolean
         get() = destinoBasuraNormal == JornadaEntity.DESTINO_NORMAL_DIMAO && kgBasuraNormalVal > 0f
+
+    /** ISSUE-58: mensaje bajo el nombre de quien pesa, si no es de la brigada. */
+    val errorEncargadoExterno: String?
+        get() = if (encargadoEsExterno) ReglasTexto.errorNombre(encargadoPesaje) else null
 
     /** ISSUE-60: mensaje bajo el campo de la guía (null si está vacía o es válida). */
     val errorGuiaDespacho: String?
@@ -436,6 +439,10 @@ class JornadaFlujoViewModel(
         val limpio = limpiarNombre(nombre)
         if (limpio.isEmpty()) {
             _uiState.update { it.copy(errorVoluntario = "Escribe el nombre del voluntario.") }
+            return false
+        }
+        ReglasTexto.errorNombre(limpio)?.let { mensaje ->
+            _uiState.update { it.copy(errorVoluntario = mensaje) }
             return false
         }
         val state = _uiState.value

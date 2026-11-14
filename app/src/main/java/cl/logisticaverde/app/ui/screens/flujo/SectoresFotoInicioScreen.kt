@@ -151,7 +151,7 @@ fun SectoresFotoInicioScreen(
         TarjetaFlujo(modifier = Modifier.weight(0.55f)) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 SubtituloFlujo("Foto de sector inicio", modifier = Modifier.weight(1f))
-                if (hasPhoto || (uiState.omitirFotoInicio && uiState.motivoOmisionInicio.isNotBlank())) {
+                if (hasPhoto || (uiState.omitirFotoInicio && EquipoSeleccionUiState.esMotivoValido(uiState.motivoOmisionInicio))) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = "Listo",

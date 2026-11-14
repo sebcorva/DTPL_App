@@ -226,6 +226,8 @@ fun PesajeResumenScreen(
                         value = uiState.encargadoPesaje,
                         onValueChange = onEncargadoExternoChange,
                         label = { Text("Nombre de quien pesa") },
+                        isError = uiState.errorEncargadoExterno != null,
+                        supportingText = uiState.errorEncargadoExterno?.let { mensaje -> { Text(mensaje) } },
                         singleLine = true,
                         shape = FormaCampoFlujo,
                         colors = coloresCampoFlujo(),

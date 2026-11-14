@@ -186,7 +186,7 @@ private fun TarjetaFotoEvidencia(
     TarjetaFlujo(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             SubtituloFlujo(titulo, modifier = Modifier.weight(1f))
-            if (hasFoto || (omitida && motivoOmision.isNotBlank())) {
+            if (hasFoto || (omitida && EquipoSeleccionUiState.esMotivoValido(motivoOmision))) {
                 Icon(
                     imageVector = Icons.Filled.CheckCircle,
                     contentDescription = "Listo",

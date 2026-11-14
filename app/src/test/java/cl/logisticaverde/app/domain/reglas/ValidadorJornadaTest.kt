@@ -60,6 +60,21 @@ class ValidadorJornadaTest {
     }
 
     @Test
+    fun issue58_textos_libres_con_formulas_se_rechazan() {
+        val conFormula = participantes + ParticipanteJornadaEntity(
+            idRegistro = id, nombre = "=IMPORTXML(A1)", rol = ParticipanteJornadaEntity.ROL_VOLUNTARIO
+        )
+        assertTrue("Hay un participante inválido" in validar(participantes = conFormula))
+        assertTrue(
+            "Nombre del encargado de pesaje inválido" in validar(jornadaValida.copy(encargadoPesaje = "+Rosa"))
+        )
+        assertTrue(
+            "El motivo de la foto de inicio tiene caracteres no permitidos" in
+                validar(jornadaValida.copy(motivoOmisionInicio = "@sin luz"))
+        )
+    }
+
+    @Test
     fun issue60_guia_de_despacho_valida_o_vacia() {
         assertEquals(emptyList<String>(), validar(jornadaValida.copy(nroGuiaDespacho = "GD-2026-0041")))
         assertEquals(emptyList<String>(), validar(jornadaValida.copy(nroGuiaDespacho = null)))

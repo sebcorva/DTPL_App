@@ -1,6 +1,7 @@
 package cl.logisticaverde.app.ui.screens.flujo
 
 import cl.logisticaverde.app.data.local.db.CatalogoSeedData
+import cl.logisticaverde.app.domain.reglas.ReglasTexto
 import cl.logisticaverde.app.data.local.entity.HerramientaCatalogoEntity
 import cl.logisticaverde.app.data.local.entity.JornadaEntity
 import cl.logisticaverde.app.data.local.entity.ParticipanteJornadaEntity
@@ -629,6 +630,41 @@ class JornadaFlujoBusinessRulesTest {
     }
 
     @Test
+    fun `ISSUE-58 - Nombres con simbolos o numeros se rechazan con un mensaje bajo el campo`() = runTest {
+        listOf("=IMPORTXML(A1)", "+56912345678", "@ana", "-Diego", "Diego2", "Ana.").forEach { nombre ->
+            assertFalse(nombre, viewModel.agregarVoluntario(nombre))
+            assertEquals(ReglasTexto.MENSAJE_NOMBRE, viewModel.uiState.value.errorVoluntario)
+        }
+        assertTrue(viewModel.agregarVoluntario("María José O'Higgins Núñez"))
+
+        viewModel.onNombreLiderChange("=HYPERLINK(1)")
+        assertEquals(ReglasTexto.MENSAJE_NOMBRE, viewModel.uiState.value.errorNombreLider)
+        assertFalse(viewModel.uiState.value.esEquipoValido)
+    }
+
+    @Test
+    fun `ISSUE-58 - Motivo de omision solo con letras, numeros y espacios`() = runTest {
+        assertTrue(EquipoSeleccionUiState.esMotivoValido("Sin batería en el teléfono 2"))
+        listOf("=1+1", "sin batería, lluvia", "-sin luz", "@todos").forEach { motivo ->
+            assertFalse(motivo, EquipoSeleccionUiState.esMotivoValido(motivo))
+        }
+    }
+
+    @Test
+    fun `ISSUE-58 - El encargado externo con simbolos no permite validar el pesaje`() = runTest {
+        viewModel.seleccionarEncargadoExterno()
+        viewModel.onEncargadoExternoChange("=A1")
+        viewModel.onCantidadSacosChange("2")
+        viewModel.onKgBasuraNormalChange("20")
+
+        assertEquals(ReglasTexto.MENSAJE_NOMBRE, viewModel.uiState.value.errorEncargadoExterno)
+        assertFalse(viewModel.uiState.value.esPesajeValido)
+
+        viewModel.onEncargadoExternoChange("Rosa del Punto Limpio")
+        assertTrue(viewModel.uiState.value.esPesajeValido)
+    }
+
+    @Test
     fun `ISSUE-32 - P3 muestra solo los sectores de la playa elegida y cambiar de playa los limpia`() = runTest {
         fakeCatalogoDao.upsertPlayas(
             CatalogoSeedData.playas + PlayaCatalogoEntity(idPlaya = "PLAYA-02", nombrePlaya = "Playa Chica")
@@ -734,7 +770,8 @@ class JornadaFlujoBusinessRulesTest {
     fun `ISSUE-31 - Topes de participantes, sacos, kilos, conteo, km y duracion`() = runTest {
         // Participantes: líder + 59 voluntarios = 60
         viewModel.onNombreLiderChange("Vanessa")
-        repeat(59) { assertTrue(viewModel.agregarVoluntario("Voluntario $it")) }
+        // ISSUE-58: los nombres no llevan números ("Voluntario AA", "Voluntario AB"…)
+        repeat(59) { assertTrue(viewModel.agregarVoluntario("Voluntario ${'A' + it / 26}${'A' + it % 26}")) }
         assertFalse(viewModel.agregarVoluntario("Uno más"))
         assertEquals("Máximo 60 integrantes por brigada.", viewModel.uiState.value.errorVoluntario)
 

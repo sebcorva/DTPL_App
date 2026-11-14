@@ -18,7 +18,6 @@ import java.time.LocalDate
 object ValidadorJornada {
 
     val BRIGADAS = listOf("Brigada A", "Brigada B", "Brigada C", "Brigada D")
-    private const val MAX_CARACTERES_NOMBRE = 80
     private const val DIAS_ATRAS_PERMITIDOS = 60L
     private const val UN_DIA_MS = 24L * 60 * 60 * 1000
 
@@ -82,7 +81,10 @@ object ValidadorJornada {
             regla(kgTotal / jornada.cantidadSacos <= 25f, "El promedio por saco supera 25 kg (Ley 20.949)")
         }
         val encargado = normalizar(jornada.encargadoPesaje)
-        regla(encargado.isNotEmpty() && encargado.length <= MAX_CARACTERES_NOMBRE, "Falta el encargado de pesaje")
+        regla(encargado.isNotEmpty(), "Falta el encargado de pesaje")
+        if (encargado.isNotEmpty()) {
+            regla(ReglasTexto.esNombreValido(encargado), "Nombre del encargado de pesaje inválido")
+        }
 
         // ---------- Destinos ----------
         regla(jornada.destinoBasuraNormal in JornadaEntity.OPCIONES_DESTINO_NORMAL, "Destino de basura normal inválido")
@@ -110,18 +112,17 @@ object ValidadorJornada {
             val (path, url, motivo) = foto
             if (path.isBlank() && url.isNullOrBlank()) {
                 val m = normalizar(motivo.orEmpty())
-                regla(
-                    m.isNotEmpty() && m.length <= TopesJornada.MAX_CARACTERES_MOTIVO_OMISION,
-                    "Falta el motivo para omitir la foto de $nombre"
-                )
+                regla(m.isNotEmpty(), "Falta el motivo para omitir la foto de $nombre")
+                if (m.isNotEmpty()) {
+                    regla(ReglasTexto.esMotivoValido(m), "El motivo de la foto de $nombre tiene caracteres no permitidos")
+                }
             }
         }
 
         // ---------- Participantes ----------
         regla(
             participantes.all {
-                val n = normalizar(it.nombre)
-                n.isNotEmpty() && n.length <= MAX_CARACTERES_NOMBRE &&
+                ReglasTexto.esNombreValido(it.nombre) &&
                     it.rol in listOf(ParticipanteJornadaEntity.ROL_LIDER, ParticipanteJornadaEntity.ROL_VOLUNTARIO)
             },
             "Hay un participante inválido"

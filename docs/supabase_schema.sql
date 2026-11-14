@@ -284,6 +284,12 @@ DECLARE
     v_insertadas integer;
 
     c_prefijo_foto constant text := '/storage/v1/object/public/evidencias-fotos/';
+
+    -- ISSUE-58: lista blanca de caracteres por campo, igual que ReglasTexto.kt. Evita que un texto
+    -- se ejecute como fórmula al copiarlo a Google Sheets (=, +, -, @ al inicio).
+    c_letras constant text := 'A-Za-zÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÄËÏÖÜÑÇáéíóúàèìòùâêîôûäëïöüñç';
+    c_re_nombre constant text := '^[' || c_letras || '][' || c_letras || ' ''’]*$';   -- letras, espacios y apóstrofo
+    c_re_motivo constant text := '^[' || c_letras || '0-9][' || c_letras || '0-9 ]*$'; -- letras, números y espacios
 BEGIN
     -- ---------- Estructura ----------
     IF j IS NULL OR jsonb_typeof(j) <> 'object' THEN
@@ -395,6 +401,9 @@ BEGIN
     IF v_encargado = '' OR length(v_encargado) > 80 THEN
         RAISE EXCEPTION 'encargado_pesaje es obligatorio (máx. 80 caracteres)' USING ERRCODE = '22023';
     END IF;
+    IF v_encargado !~ c_re_nombre THEN
+        RAISE EXCEPTION 'encargado_pesaje: solo letras, espacios y apóstrofo' USING ERRCODE = '22023';
+    END IF;
 
     -- ---------- Destinos (P9: "No aplicable" si y solo si hay 0 kg) ----------
     v_destino_normal := j ->> 'destino_basura_normal';
@@ -433,6 +442,9 @@ BEGIN
             IF v_motivos[v_i] = '' OR length(v_motivos[v_i]) > 120 THEN
                 RAISE EXCEPTION 'Falta el motivo para omitir la foto de %', v_tipos_foto[v_i] USING ERRCODE = '22023';
             END IF;
+            IF v_motivos[v_i] !~ c_re_motivo THEN
+                RAISE EXCEPTION 'Motivo de la foto de %: solo letras, números y espacios', v_tipos_foto[v_i] USING ERRCODE = '22023';
+            END IF;
         END IF;
     END LOOP;
 
@@ -442,9 +454,10 @@ BEGIN
         WHERE jsonb_typeof(e) <> 'object'
            OR trim(COALESCE(e ->> 'nombre', '')) = ''
            OR length(trim(e ->> 'nombre')) > 80
+           OR regexp_replace(trim(e ->> 'nombre'), '\s+', ' ', 'g') !~ c_re_nombre
            OR COALESCE(e ->> 'rol', '') NOT IN ('LIDER', 'VOLUNTARIO')
     ) THEN
-        RAISE EXCEPTION 'Participante inválido (nombre obligatorio, rol LIDER o VOLUNTARIO)' USING ERRCODE = '22023';
+        RAISE EXCEPTION 'Participante inválido (nombre con solo letras, espacios y apóstrofo, máx. 80; rol LIDER o VOLUNTARIO)' USING ERRCODE = '22023';
     END IF;
     SELECT COUNT(*) FILTER (WHERE e ->> 'rol' = 'LIDER'),
            COUNT(*) FILTER (WHERE e ->> 'rol' = 'VOLUNTARIO')

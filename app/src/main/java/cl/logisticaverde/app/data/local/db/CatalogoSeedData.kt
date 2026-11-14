@@ -30,25 +30,25 @@ object CatalogoSeedData {
         SectorCatalogoEntity(
             idSector = "SECTOR-01",
             idPlaya = ID_PLAYA_GRANDE,
-            nombreSector = "Sector 1 - Norte (2.000 m²)",
+            nombreSector = "Sector 1 - Norte",
             areaM2 = 2000
         ),
         SectorCatalogoEntity(
             idSector = "SECTOR-02",
             idPlaya = ID_PLAYA_GRANDE,
-            nombreSector = "Sector 2 - Centro Norte (2.000 m²)",
+            nombreSector = "Sector 2 - Centro Norte",
             areaM2 = 2000
         ),
         SectorCatalogoEntity(
             idSector = "SECTOR-03",
             idPlaya = ID_PLAYA_GRANDE,
-            nombreSector = "Sector 3 - Centro Sur (2.000 m²)",
+            nombreSector = "Sector 3 - Centro Sur",
             areaM2 = 2000
         ),
         SectorCatalogoEntity(
             idSector = "SECTOR-04",
             idPlaya = ID_PLAYA_GRANDE,
-            nombreSector = "Sector 4 - Sur (2.000 m²)",
+            nombreSector = "Sector 4 - Sur",
             areaM2 = 2000
         )
     )

@@ -843,10 +843,10 @@ INSERT INTO public.playa_catalogo (id_playa, nombre_playa) VALUES
 ON CONFLICT (id_playa) DO UPDATE SET nombre_playa = EXCLUDED.nombre_playa;
 
 INSERT INTO public.sector_catalogo (id_sector, id_playa, nombre_sector, area_m2) VALUES
-    ('SECTOR-01', 'PLAYA-01', 'Sector 1 - Norte (2.000 m²)', 2000),
-    ('SECTOR-02', 'PLAYA-01', 'Sector 2 - Centro Norte (2.000 m²)', 2000),
-    ('SECTOR-03', 'PLAYA-01', 'Sector 3 - Centro Sur (2.000 m²)', 2000),
-    ('SECTOR-04', 'PLAYA-01', 'Sector 4 - Sur (2.000 m²)', 2000)
+    ('SECTOR-01', 'PLAYA-01', 'Sector 1 - Norte', 2000),
+    ('SECTOR-02', 'PLAYA-01', 'Sector 2 - Centro Norte', 2000),
+    ('SECTOR-03', 'PLAYA-01', 'Sector 3 - Centro Sur', 2000),
+    ('SECTOR-04', 'PLAYA-01', 'Sector 4 - Sur', 2000)
 ON CONFLICT (id_sector) DO UPDATE SET
     id_playa = EXCLUDED.id_playa,
     nombre_sector = EXCLUDED.nombre_sector,

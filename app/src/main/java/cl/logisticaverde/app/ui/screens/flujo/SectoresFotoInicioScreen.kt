@@ -136,7 +136,7 @@ fun SectoresFotoInicioScreen(
             ) {
                 items(sectores, key = { it.idSector }) { sector ->
                     BotonSeleccionFlujo(
-                        texto = nombreSectorVisible(sector.nombreSector),
+                        texto = sector.nombreSector,
                         activo = sector.idSector in uiState.selectedSectoresIds,
                         onClick = { onToggleSector(sector.idSector) },
                         modifier = Modifier.fillMaxWidth()

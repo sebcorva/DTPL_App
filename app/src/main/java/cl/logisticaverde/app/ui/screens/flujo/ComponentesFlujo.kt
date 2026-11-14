@@ -220,13 +220,6 @@ fun coloresCheckboxFlujo() = CheckboxDefaults.colors(
 )
 
 /**
- * Nombre del sector sin la superficie entre paréntesis: "Sector 1 - Norte (2.000 m²)" → "Sector 1 - Norte".
- * El catálogo trae la superficie pegada al nombre; mejora futura en ISSUE-47 (limpiar el catálogo).
- */
-fun nombreSectorVisible(nombre: String): String =
-    nombre.replace(Regex("""\s*\([^()]*m(²|2)\s*\)\s*$""", RegexOption.IGNORE_CASE), "").trim()
-
-/**
  * Fondo celeste para un área vacía del flujo (P3 "Sin fotografía", P4 "Sin herramientas"):
  * ícono + texto centrados y, debajo, [contenido] opcional.
  */

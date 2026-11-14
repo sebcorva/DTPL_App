@@ -486,10 +486,10 @@
   - **Herramientas** (una fila por herramienta y jornada): ID jornada, fecha, playa, brigada, Herramienta_ID, nombre, estado final.
   - **Listas** (oculta): playas y brigadas activas.
 * **Criterios de aceptación:**
-  - [ ] `vista_jornada`: agregar al final `duracion_h` y `voluntario_horas`.
-  - [ ] `vista_residuos`, `vista_herramientas` y `vista_area_diaria` (área por playa y `fecha_jornada` contando cada sector una sola vez).
-  - [ ] `REVOKE` a `anon` y `authenticated` en todas las vistas.
-  - [ ] Ejecutar en Supabase y comprobar con datos de prueba.
+  - [x] `vista_jornada`: agregar al final `duracion_h` y `voluntario_horas`.
+  - [x] `vista_residuos`, `vista_herramientas` y `vista_area_diaria` (área por playa y `fecha_jornada` contando cada sector una sola vez).
+  - [x] `REVOKE` a `anon` y `authenticated` en todas las vistas (+ `DROP VIEW` en `supabase_reset.sql`).
+  - [x] Ejecutar en Supabase y comprobar con datos de prueba (14-11-2026).
 
 ### `[ISSUE-42]` ✅ Manejo de excepciones y mensajes de error · ~1,5 d
 * **Origen (31-10-2026):** la sincronización falló con `HTTP 404 … Could not find the function public.sincronizar_jornada(p) in the schema cache` (PGRST202; los catálogos con PGRST205). Causa: en Supabase se ejecutó el reset v4 pero no `supabase_schema.sql` (o PostgREST no recargó su caché). La app no perdió datos (las jornadas siguen `PENDIENTE_SYNC`), pero mostró al líder un mensaje técnico y la descarga de catálogos falló **en silencio**.

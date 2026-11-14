@@ -691,7 +691,8 @@ DROP VIEW IF EXISTS public.vista_reporte_jornadas;
 DROP VIEW IF EXISTS public.vista_densidad_diaria;
 
 -- ISSUE-62: una fila por jornada con todo lo derivado (para la planilla, una web o informes).
--- Los KPIs de la clienta se agregan aquí o en vistas nuevas cuando se defina la planilla (ISSUE-30).
+-- ISSUE-30: alimenta la pestaña Jornadas de la planilla; duracion_h y voluntario_horas van al
+-- final porque CREATE OR REPLACE VIEW solo permite agregar columnas al final.
 -- security_invoker: la vista se consulta con los permisos de quien la llama (solo service_role).
 CREATE OR REPLACE VIEW public.vista_jornada WITH (security_invoker = true) AS
 SELECT
@@ -727,7 +728,11 @@ SELECT
     j.destino_basura_normal,
     j.nro_guia_despacho,
     j.destino_basura_reciclable,
-    j.fecha_sincronizacion
+    j.fecha_sincronizacion,
+    -- ISSUE-30: horas decimales (1 h 30 min = 1.50) y voluntario-horas = participantes
+    -- (líder + voluntarios) × duración. Se calculan sin redondear y se redondea al final.
+    round(extract(epoch FROM j.hora_fin - j.hora_inicio) / 3600, 2) AS duracion_h,
+    round(COALESCE(pa.total_participantes, 0) * extract(epoch FROM j.hora_fin - j.hora_inicio) / 3600, 2) AS voluntario_horas
 FROM public.jornada j
 JOIN public.playa_catalogo pl ON pl.id_playa = j.id_playa
 JOIN public.brigada_catalogo br ON br.id_brigada = j.id_brigada
@@ -760,6 +765,73 @@ LEFT JOIN (
 ) fo ON fo.id_registro = j.id_registro;
 
 REVOKE ALL ON public.vista_jornada FROM anon, authenticated;
+
+-- ISSUE-30: pestaña Residuos. Una fila por jornada y tipo de residuo; los tipos con
+-- cantidad 0 no se muestran (mismo criterio que la P10, BR-12). El conteo es por jornada,
+-- no por sector, y la app no pesa por tipo: el peso está en vista_jornada.
+CREATE OR REPLACE VIEW public.vista_residuos WITH (security_invoker = true) AS
+SELECT
+    b.id_registro,
+    j.fecha_jornada,
+    j.id_playa,
+    pl.nombre_playa,
+    j.id_brigada,
+    br.nombre_brigada,
+    b.id_tipo_basura,
+    b.nombre_visible,
+    b.categoria_origen,
+    b.cantidad
+FROM public.basura_recolectada b
+JOIN public.jornada j ON j.id_registro = b.id_registro
+JOIN public.playa_catalogo pl ON pl.id_playa = j.id_playa
+JOIN public.brigada_catalogo br ON br.id_brigada = j.id_brigada
+WHERE b.cantidad > 0;
+
+REVOKE ALL ON public.vista_residuos FROM anon, authenticated;
+
+-- ISSUE-30: pestaña Herramientas. Una fila por herramienta y jornada (cada fila es una
+-- unidad física). qr_codigo es el ID interno de la herramienta (Herramienta_ID en la planilla).
+-- Las jornadas con sin_herramientas = true no tienen filas aquí.
+CREATE OR REPLACE VIEW public.vista_herramientas WITH (security_invoker = true) AS
+SELECT
+    h.id_registro,
+    j.fecha_jornada,
+    j.id_playa,
+    pl.nombre_playa,
+    j.id_brigada,
+    br.nombre_brigada,
+    h.qr_codigo,
+    h.nombre_herramienta,
+    h.estado_final
+FROM public.herramienta_jornada h
+JOIN public.jornada j ON j.id_registro = h.id_registro
+JOIN public.playa_catalogo pl ON pl.id_playa = j.id_playa
+JOIN public.brigada_catalogo br ON br.id_brigada = j.id_brigada;
+
+REVOKE ALL ON public.vista_herramientas FROM anon, authenticated;
+
+-- ISSUE-30: área limpiada por playa y día contando cada sector UNA sola vez. Si dos
+-- brigadas eligen el mismo sector el mismo día, sumar vista_jornada.area_total_m2 lo
+-- contaría dos veces; el KPI de área total y kg/m² total usa esta vista.
+-- area_m2 es la guardada en la jornada (la del catálogo en ese momento); si el mismo
+-- sector quedó con dos superficies distintas ese día, se toma la mayor.
+CREATE OR REPLACE VIEW public.vista_area_diaria WITH (security_invoker = true) AS
+SELECT
+    s.fecha_jornada,
+    s.id_playa,
+    pl.nombre_playa,
+    count(*)::integer AS sectores_limpiados,
+    sum(s.area_m2)::integer AS area_m2
+FROM (
+    SELECT j.fecha_jornada, j.id_playa, js.id_sector, max(js.area_m2) AS area_m2
+      FROM public.jornada_sector js
+      JOIN public.jornada j ON j.id_registro = js.id_registro
+     GROUP BY j.fecha_jornada, j.id_playa, js.id_sector
+) s
+JOIN public.playa_catalogo pl ON pl.id_playa = s.id_playa
+GROUP BY s.fecha_jornada, s.id_playa, pl.nombre_playa;
+
+REVOKE ALL ON public.vista_area_diaria FROM anon, authenticated;
 
 
 -- ============================================================================
@@ -861,6 +933,7 @@ WITH CHECK (
 --    curl "$SUPABASE_URL/rest/v1/jornada?select=*" -H "apikey: $KEY"
 --    curl "$SUPABASE_URL/rest/v1/foto_jornada?select=*" -H "apikey: $KEY"
 --    curl "$SUPABASE_URL/rest/v1/vista_jornada?select=*" -H "apikey: $KEY"
+--    (lo mismo con vista_residuos, vista_herramientas y vista_area_diaria — ISSUE-30)
 -- 3) No se puede cambiar el inventario (401/403):
 --    curl -X PATCH "$SUPABASE_URL/rest/v1/herramienta_catalogo?qr_codigo=eq.INV-02-PINZA-01" \
 --      -H "apikey: $KEY" -H "Content-Type: application/json" -d '{"estado":"Extraviado"}'

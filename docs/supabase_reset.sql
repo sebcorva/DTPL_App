@@ -18,6 +18,9 @@
 -- los cambios de esquema se hacen con migraciones (ALTER TABLE).
 -- ============================================================================
 
+DROP VIEW IF EXISTS public.vista_area_diaria;
+DROP VIEW IF EXISTS public.vista_herramientas;
+DROP VIEW IF EXISTS public.vista_residuos;
 DROP VIEW IF EXISTS public.vista_jornada;
 DROP VIEW IF EXISTS public.vista_reporte_jornadas;
 DROP VIEW IF EXISTS public.vista_densidad_diaria;

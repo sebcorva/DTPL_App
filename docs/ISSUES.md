@@ -235,17 +235,17 @@
   - [x] Menú "Logística Verde → Sincronizar" y disparador diario, que además es el *keep-alive*.
   - [x] Prueba: con datos de prueba, los KPI de la planilla coinciden con la P10 de cada jornada.
 
-### `[ISSUE-28]` Despliegue y entorno · 0,5 d
+### `[ISSUE-28]` ✅ Despliegue y entorno · 0,5 d
 * **Criterios de aceptación:**
   - [x] `git init`, `.gitignore` verificado (`local.properties`, `.env`, `build/`, keystores), primer commit y repositorio en GitHub.
   - [x] Identificador público `applicationId = "dejatuplayalimpia.app"` (31-10-2026; el `namespace` del código sigue `cl.logisticaverde.app`). ⚠️ Se instala como app nueva: desinstalar la versión anterior en los teléfonos de prueba.
   - [x] Ícono de la app = logo (ícono adaptativo `mipmap-anydpi/ic_launcher`, logo en la zona segura sobre fondo blanco).
-  - [ ] Keystore de firma: contraseña y respaldo **por definir** (no se sube a git).
+  - [x] Keystore de firma (14-11-2026): `~/keystores/dejatuplayalimpia.jks`, alias `dejatuplayalimpia`, fuera del repositorio; ruta y contraseña en `local.properties` (`RELEASE_*`, ver `local.properties.example`). Contraseña en el gestor del desarrollador y copia del `.jks` respaldada aparte. Sin ella el release se bloquea; el debug compila igual.
   - [x] Quitar `org.gradle.java.home` de `gradle.properties` (movido a `~/.gradle/gradle.properties`, 14-11-2026).
   - [x] ~~Sincronizar las jornadas pendientes antes de instalar la v3~~ — descartado: los datos de prueba se pueden perder (la migración a v3 los borra).
   - [x] Ejecutar `supabase_schema.sql` (v4) y la verificación manual de ISSUE-20 (07-11-2026).
   - [x] Configurar Script Properties en Sheets (`SUPABASE_URL`, `SUPABASE_SECRET_KEY`) y ejecutar `crearEstructura()`, `sincronizar()` e `instalarSincronizacionDiaria()` (ISSUE-27).
-  - [ ] `./gradlew testDebugUnitTest` en verde y APK release generado.
+  - [x] `./gradlew testDebugUnitTest` en verde (80) y APK release firmado (esquema v2, verificado con `apksigner`) (14-11-2026).
 
 ### `[ISSUE-29]` Prueba piloto en terreno (QA) · 1 d
 * **Criterios de aceptación:**

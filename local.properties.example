@@ -11,3 +11,11 @@ SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 # Opcional (no implementado por ahora): compartir directo a Historias de Instagram
 META_APP_ID=
+
+# Firma del APK release (ISSUE-28). La keystore va FUERA del proyecto y respaldada.
+# Si falta, el debug compila igual y el release se bloquea con un mensaje.
+RELEASE_STORE_FILE=~/keystores/dejatuplayalimpia.jks
+RELEASE_STORE_PASSWORD=s1pRDC
+RELEASE_KEY_ALIAS=dejatuplayalimpia
+# Opcional: si se omite se usa la misma de RELEASE_STORE_PASSWORD
+RELEASE_KEY_PASSWORD=

@@ -29,6 +29,19 @@ val supabaseConfigurado: Boolean = supabaseUrl.startsWith("https://") &&
     !supabaseUrl.contains("placeholder.supabase.co") &&
     supabasePublishableKey.isNotBlank()
 
+// Firma del APK release (ISSUE-28): la keystore y sus contraseñas viven fuera del repositorio,
+// en local.properties (ver local.properties.example). Sin ellas el debug compila igual.
+val releaseStoreFile: String? = envProperties.getProperty("RELEASE_STORE_FILE")
+    ?.replaceFirst("~", System.getProperty("user.home"))
+val releaseStorePassword: String? = envProperties.getProperty("RELEASE_STORE_PASSWORD")
+val releaseKeyAlias: String? = envProperties.getProperty("RELEASE_KEY_ALIAS")
+val releaseKeyPassword: String? = envProperties.getProperty("RELEASE_KEY_PASSWORD") ?: releaseStorePassword
+
+val firmaConfigurada: Boolean = !releaseStoreFile.isNullOrBlank() &&
+    file(releaseStoreFile).exists() &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank()
+
 tasks.configureEach {
     if (name == "preReleaseBuild") {
         doFirst {
@@ -36,6 +49,12 @@ tasks.configureEach {
                 throw GradleException(
                     "Build release bloqueado: faltan SUPABASE_URL o SUPABASE_PUBLISHABLE_KEY en local.properties " +
                         "(o como variables de entorno)."
+                )
+            }
+            if (!firmaConfigurada) {
+                throw GradleException(
+                    "Build release bloqueado: faltan RELEASE_STORE_FILE (que exista), RELEASE_STORE_PASSWORD o " +
+                        "RELEASE_KEY_ALIAS en local.properties."
                 )
             }
         }
@@ -64,8 +83,20 @@ android {
         }
     }
 
+    signingConfigs {
+        if (firmaConfigurada) {
+            create("release") {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (firmaConfigurada) signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
